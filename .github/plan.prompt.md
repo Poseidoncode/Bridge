@@ -168,10 +168,9 @@ document.addEventListener('keydown', async (event) => {
     const originalText = activeElement.isContentEditable ? activeElement.innerText : activeElement.value;
     if (!originalText) return;
 
-    // TODO: Get target language from chrome.storage
-    const targetLang = 'en'; // MVP stage, hardcoded to English
-
-    try {
+    // Get target language from chrome.storage
+    const settings = await chrome.storage.sync.get(['targetWriteLang']);
+    const targetLang = settings.targetWriteLang || 'en'; // Default to English if not set    try {
       const canCreate = await chrome.ai.canCreateWriter();
       if (canCreate === 'no') {
         console.error("Cannot create AI Writer.");
@@ -358,20 +357,36 @@ async function translatePage() {
   originalNodes.forEach((node, index) => {
     const translatedText = translatedTexts[index];
     if (translatedText) {
-      const translatedNode = document.createElement('p');
+      // Create a container for bilingual display
+      const container = document.createElement('div');
+      container.className = 'translationgummy-bilingual-container';
+      
+      // Clone the original node and wrap it
+      const originalClone = node.cloneNode(true) as HTMLElement;
+      originalClone.className = 'translationgummy-original';
+      
+      // Create translated node
+      const translatedNode = document.createElement('div');
       translatedNode.className = 'translationgummy-translation';
       translatedNode.textContent = translatedText;
-      (node as HTMLElement).style.marginBottom = '0.25em';
-      node.after(translatedNode);
+      
+      // Append to container
+      container.appendChild(originalClone);
+      container.appendChild(translatedNode);
+      
+      // Replace original node with container
+      node.parentNode?.replaceChild(container, node);
     }
   });
 }
 
 function revertPage() {
-  const translatedNodes = document.querySelectorAll('.translationgummy-translation');
-  translatedNodes.forEach(node => node.remove());
-  document.querySelectorAll('p, h1, h2, h3, li, blockquote').forEach(node => {
-      (node as HTMLElement).style.marginBottom = '';
+  const containers = document.querySelectorAll('.translationgummy-bilingual-container');
+  containers.forEach(container => {
+    const originalNode = container.querySelector('.translationgummy-original');
+    if (originalNode) {
+      container.parentNode?.replaceChild(originalNode, container);
+    }
   });
 }
 
@@ -395,14 +410,28 @@ Create `src/content.css` for styling injected translation text.
 
 ```css
 /* File: src/content.css */
+.translationgummy-bilingual-container {
+  display: flex;
+  gap: 1em;
+  align-items: flex-start;
+  margin-bottom: 1em;
+}
+
+.translationgummy-original {
+  flex: 1;
+  padding: 0.5em;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+}
+
 .translationgummy-translation {
+  flex: 1;
   color: #555;
   font-size: 0.95em;
   background-color: #f9f9f9;
   border-left: 3px solid #ccc;
   padding: 0.5em;
-  margin-top: 0.25em !important;
-  margin-bottom: 1em !important;
+  border-radius: 4px;
 }
 ```
 
@@ -437,7 +466,7 @@ Provide the following steps to for testing:
 3. Click "Load unpacked".
 4. Select the `dist` folder in your project.
 5. "TranslationGummy" extension should now be installed.
-6. **Test Writing**: Go to any site (e.g., Google Search), type Chinese in an input box, then press `Shift+Enter`. Text should translate to English.
+6. **Test Writing**: Go to any site (e.g., Google Search), type in your native language (e.g., Chinese) in an input box, then press `Shift+Enter`. The text should be translated into the target language set in the popup (default English).
 7. **Test Reading**: Go to an English site (e.g., BBC News), click the TranslationGummy icon in top right, toggle "Enable Immersive Reading". The page should display bilingual comparison format with original English text and translated Chinese text side by side or in a comparable layout for easy reference.
 
 **Agent, your task is fully defined. Start execution from Phase 1.**
