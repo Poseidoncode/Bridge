@@ -1,5 +1,16 @@
 # TranslationGummy Chrome Extension Development Plan
 
+Our objective is to build "TranslationGummy," a Chrome extension designed to completely break down web language barriers by providing a **complete, secure, and seamless cross-language communication loop.**
+
+The project features two core functions:
+
+1.  **Immersive Reading:** Instantly transforms any foreign webpage into a bilingual format, displaying both the original text and its translation side-by-side for effortless comprehension.
+2.  **Seamless Writing:** Allows users to type naturally in their native language within any text box. A simple shortcut (`Shift+Enter`) instantly converts their text into fluent, accurate target language.
+
+The core innovation lies in leveraging Chrome's built-in **On-Device AI**. This ensures our tool is not only incredibly fast and offline-capable but also offers **absolute privacy**, as user browsing data and conversations never leave their computer.
+
+**To AI Agent:**
+
 Your task is to develop a Chrome extension named "TranslationGummy" that provides an immersive web communication experience, combining full-page translation reading with seamless native language input and writing.
 
 Follow the phases and steps strictly. Ensure each step is fully completed before proceeding to the next one.
