@@ -1,28 +1,72 @@
 # TranslationGummy Chrome Extension Development Plan
 
-Our objective is to build "TranslationGummy," a Chrome extension designed to completely break down web language barriers by providing a **complete, secure, and seamless cross-language communication loop.**
+## 🎯 Project Overview
 
-The project features two core functions:
+**TranslationGummy** is a revolutionary Chrome extension that eliminates web language barriers through a **complete, secure, and seamless cross-language communication ecosystem**.
 
-1.  **Immersive Reading:** Instantly transforms any foreign webpage into a bilingual format, displaying both the original text and its translation side-by-side for effortless comprehension.
-2.  **Seamless Writing:** Allows users to type naturally in their native language within any text box. A simple shortcut (`Shift+Enter`) instantly converts their text into fluent, accurate target language.
+### Core Features
+1. **📰 Immersive Reading Mode**: Transforms foreign webpages into bilingual interfaces with side-by-side original/translated content
+2. **✍️ Seamless Writing Mode**: Real-time native language input with `Shift+Enter` translation to target languages
+3. **🔒 Privacy-First Architecture**: On-device AI processing ensures absolute privacy and offline capability
 
-The core innovation lies in leveraging Chrome's built-in **On-Device AI**. This ensures our tool is not only incredibly fast and offline-capable but also offers **absolute privacy**, as user browsing data and conversations never leave their computer.
+### Technical Innovation
+- **Chrome Built-in AI APIs**: Leveraging `chrome.ai` for instant, private translations
+- **Progressive Enhancement**: Graceful degradation when AI features unavailable
+- **Cross-Platform Sync**: Settings synchronization across devices via `chrome.storage.sync`
+
+---
+
+## 📋 Development Roadmap
 
 **To AI Agent:**
 
-Your task is to develop a Chrome extension named "TranslationGummy" that provides an immersive web communication experience, combining full-page translation reading with seamless native language input and writing.
+Execute this comprehensive development plan systematically. Each phase includes detailed instructions, technical considerations, and success criteria.
 
-Follow the phases and steps strictly. Ensure each step is fully completed before proceeding to the next one.
+### ✅ Prerequisites & Risk Assessment
+
+**Technical Dependencies:**
+- Chrome Manifest V3 compatibility
+- Chrome Built-in AI API availability (`chrome.ai.canCreateTextTranslator()`, `chrome.ai.canCreateWriter()`)
+- Svelte 5 + TypeScript + Vite build pipeline
+- CRXJS for Chrome extension packaging
+
+**Potential Risks & Mitigations:**
+- ⚠️ **AI API Limitations**: Implement fallback mechanisms and user notifications
+- ⚠️ **Performance Impact**: Add throttling and caching layers
+- ⚠️ **DOM Manipulation Conflicts**: Use non-destructive overlay techniques
+- ⚠️ **Memory Leaks**: Implement proper cleanup in content scripts
+- ⚠️ **Cross-Site Compatibility**: Test across major websites and handle edge cases
+
+**Success Metrics:**
+- ✅ Extension loads without console errors
+- ✅ Translation accuracy > 90% for supported languages
+- ✅ Response time < 2s for typical translations
+- ✅ Memory usage stable during extended use
+- ✅ Settings persist across browser sessions
 
 ## Phase 0: Knowledge Acquisition
 
 ### Instruction 0.1:
 Before coding, locate and thoroughly learn core concepts from the following documents in the CONTEXT7 knowledge base. This is a prerequisite for success.
 
+**⚠️ Important: Use CONTEXT7 MCP Server for Document Access**
+
+All documentation reading and research must be conducted using the **context7 MCP server**:
+```bash
+# Ensure context7 MCP server is running
+npx context7-mcp@latest
+
+# Use access_mcp_resource tool to read documentation
+access_mcp_resource("context7", "docs://chrome-extension-manifest-v3")
+access_mcp_resource("context7", "docs://chrome-built-in-ai")
+access_mcp_resource("context7", "docs://svelte-5")
+access_mcp_resource("context7", "docs://vite")
+```
+
 **Document List:**
 
 1. **Chrome Extension - Manifest V3 Developer Documentation**
+   - **MCP Resource**: `docs://chrome-extension-manifest-v3`
    - Keywords: `Manifest V3`, `Chrome Extension manifest.json`, `Content Scripts`, `Message Passing`, `chrome.action API`, `chrome.storage API`
    - Concepts to master:
      - Role of `content_scripts`, matching patterns (`matches`), and execution environment isolation.
@@ -31,6 +75,7 @@ Before coding, locate and thoroughly learn core concepts from the following docu
      - MV3 permission model (`permissions` and `host_permissions`).
 
 2. **Chrome for Developers - Built-in AI APIs Documentation**
+   - **MCP Resource**: `docs://chrome-built-in-ai`
    - Keywords: `chrome.ai`, `On-Device AI`, `createTextTranslator`, `createWriter`
    - Concepts to master:
      - Checking `chrome.ai.canCreate*` to confirm model availability.
@@ -39,6 +84,7 @@ Before coding, locate and thoroughly learn core concepts from the following docu
      - Asynchronous nature of APIs, must use `async/await`.
 
 3. **Svelte 5 Documentation**
+   - **MCP Resource**: `docs://svelte-5`
    - Keywords: `Svelte 5`, `Svelte Runes`, `$state`, `$effect`, `Svelte components`
    - Concepts to master:
      - Creating a basic Svelte component.
@@ -46,6 +92,7 @@ Before coding, locate and thoroughly learn core concepts from the following docu
      - Handling logic in `<script>` tags and rendering UI in HTML templates.
 
 4. **Vite Official Documentation**
+   - **MCP Resource**: `docs://vite`
    - Keywords: `Vite`, `Vite project setup`, `vite.config.js`
    - Concepts to master:
      - Using `npm create vite@latest` to initialize a Svelte + TypeScript project.
@@ -459,14 +506,313 @@ npm run build
 ```
 
 ### Instruction 6.2:
-Provide the following steps to for testing:
+Provide the following steps for testing:
 
-1. Open Chrome browser, go to `chrome://extensions`.
-2. Enable "Developer mode" in the top right.
-3. Click "Load unpacked".
-4. Select the `dist` folder in your project.
-5. "TranslationGummy" extension should now be installed.
-6. **Test Writing**: Go to any site (e.g., Google Search), type in your native language (e.g., Chinese) in an input box, then press `Shift+Enter`. The text should be translated into the target language set in the popup (default English).
-7. **Test Reading**: Go to an English site (e.g., BBC News), click the TranslationGummy icon in top right, toggle "Enable Immersive Reading". The page should display bilingual comparison format with original English text and translated Chinese text side by side or in a comparable layout for easy reference.
+**⚠️ Automated Testing with Chrome DevTools MCP:**
+
+```bash
+# 1. Launch Chrome and navigate to extensions page
+browser_action("launch", "chrome://extensions")
+
+# 2. Enable Developer Mode
+browser_action("click", "developer-mode-toggle")
+
+# 3. Load unpacked extension
+browser_action("click", "load-unpacked-button")
+# Select the dist folder when file dialog appears
+
+# 4. Verify extension is loaded
+browser_action("wait_for", "TranslationGummy")
+```
+
+**Manual Testing Steps:**
+
+1. **Load Extension**:
+   - Open Chrome browser, go to `chrome://extensions`
+   - Enable "Developer mode" in the top right
+   - Click "Load unpacked"
+   - Select the `dist` folder in your project
+   - "TranslationGummy" extension should now be installed
+
+2. **Test Writing Mode**:
+   - Go to any site (e.g., Google Search)
+   - Type in your native language (e.g., Chinese) in an input box
+   - Press `Shift+Enter` to trigger translation
+   - The text should be translated into the target language set in the popup (default English)
+
+3. **Test Reading Mode**:
+   - Go to an English site (e.g., BBC News)
+   - Click the TranslationGummy icon in top right
+   - Toggle "Enable Immersive Reading"
+   - The page should display bilingual comparison format with original English text and translated Chinese text side by side
+
+4. **Advanced Testing**:
+   ```bash
+   # Test extension popup functionality
+   browser_action("click", "translationgummy-extension-icon")
+   browser_action("wait_for", "translationgummy-popup")
+
+   # Test language switching
+   browser_action("select_option", "write-lang-dropdown", "ja")
+   browser_action("select_option", "read-lang-dropdown", "zh-CN")
+
+   # Test error handling
+   browser_action("evaluate", "chrome.ai.canCreateWriter = () => 'no'")
+   # Verify graceful error handling
+   ```
+
+---
+
+## 🏗️ Advanced Architecture & Optimizations
+
+### Performance Optimizations
+```typescript
+// Translation Throttling System
+class TranslationThrottler {
+  private pendingRequests = new Map<string, Promise<string>>();
+  private requestQueue: Array<{id: string, text: string, resolve: Function}> = [];
+
+  async translateWithThrottling(text: string, lang: string): Promise<string> {
+    const requestId = `${text}:${lang}`;
+
+    // Return pending request if exists
+    if (this.pendingRequests.has(requestId)) {
+      return this.pendingRequests.get(requestId)!;
+    }
+
+    // Create new translation promise
+    const promise = this.performTranslation(text, lang);
+    this.pendingRequests.set(requestId, promise);
+
+    promise.finally(() => {
+      this.pendingRequests.delete(requestId);
+    });
+
+    return promise;
+  }
+}
+```
+
+### Smart Caching Strategy
+```typescript
+// Multi-layer Caching System
+class TranslationCache {
+  private memoryCache = new Map<string, CacheEntry>();
+  private storageCache = new Map<string, CacheEntry>();
+
+  async get(text: string, lang: string): Promise<string | null> {
+    const key = this.generateKey(text, lang);
+
+    // Check memory cache first
+    const memoryEntry = this.memoryCache.get(key);
+    if (memoryEntry && this.isValid(memoryEntry)) {
+      return memoryEntry.translation;
+    }
+
+    // Check storage cache
+    const storageEntry = await this.getFromStorage(key);
+    if (storageEntry && this.isValid(storageEntry)) {
+      this.memoryCache.set(key, storageEntry);
+      return storageEntry.translation;
+    }
+
+    return null;
+  }
+}
+```
+
+### Enhanced Error Handling
+```typescript
+// Comprehensive Error Management
+class ErrorHandler {
+  static async withRetry<T>(
+    operation: () => Promise<T>,
+    maxRetries: number = 3,
+    delay: number = 1000
+  ): Promise<T> {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        return await operation();
+      } catch (error) {
+        if (i === maxRetries - 1) throw error;
+
+        // Exponential backoff
+        await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
+      }
+    }
+    throw new Error('Max retries exceeded');
+  }
+}
+```
+
+---
+
+## 🧪 Testing Strategy
+
+### ⚠️ Important: Use Chrome DevTools MCP Server for Testing
+
+All testing procedures must utilize the **Chrome DevTools MCP server** for comprehensive browser automation and testing:
+
+```bash
+# Install and start Chrome DevTools MCP server
+npm install -g chrome-devtools-mcp@latest
+npx chrome-devtools-mcp@latest
+
+# Use browser_action tool for testing procedures
+browser_action("launch", "chrome://extensions")
+browser_action("click", "developer-mode-toggle")
+browser_action("click", "load-unpacked-button")
+```
+
+### Unit Testing Setup
+```bash
+# Install testing dependencies
+npm install --save-dev vitest @testing-library/svelte @testing-library/jest-dom jsdom
+
+# Add test script to package.json
+{
+  "scripts": {
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage"
+  }
+}
+```
+
+### Test Categories
+1. **🔧 Unit Tests**: Translation logic, cache management, error handling
+2. **🎨 Component Tests**: Popup UI interactions, state management
+3. **🌐 Integration Tests**: Chrome APIs, message passing, storage
+4. **🚀 E2E Tests**: Full user workflows, cross-browser compatibility (using Chrome DevTools MCP)
+
+### Quality Gates
+- ✅ Code coverage > 85%
+- ✅ All tests passing in CI/CD
+- ✅ No console errors in production build
+- ✅ Performance benchmarks met
+
+---
+
+## 📦 Deployment & Distribution
+
+### Build Optimization
+```typescript
+// vite.config.ts - Production optimizations
+export default defineConfig(({ mode }) => ({
+  plugins: [
+    svelte(),
+    crx({ manifest }),
+    mode === 'production' && terser(), // Minify for production
+  ],
+  build: {
+    minify: mode === 'production' ? 'terser' : false,
+    sourcemap: mode === 'development',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['svelte', 'svelte/internal'],
+        }
+      }
+    }
+  }
+}));
+```
+
+### Publishing Workflow
+1. **🔍 Code Review**: All changes reviewed before merge
+2. **✅ Automated Testing**: CI/CD pipeline validates build
+3. **📦 Build Creation**: Generate optimized production build
+4. **🧪 Manual Testing**: Test across different Chrome versions
+5. **📤 Chrome Web Store**: Upload to developer dashboard
+6. **📊 Version Management**: Semantic versioning for releases
+
+---
+
+## 🔧 Maintenance & Monitoring
+
+### Update Strategy
+- **🔄 Auto-Updates**: Users receive updates automatically via Chrome Web Store
+- **⚠️ Breaking Changes**: Major version bumps for API changes
+- **🔒 Backward Compatibility**: Maintain compatibility with recent versions
+
+### Monitoring & Analytics
+```typescript
+// Privacy-focused analytics
+class Analytics {
+  static track(event: string, data?: Record<string, any>) {
+    // Only track non-sensitive events
+    if (this.isPrivacySafe(event, data)) {
+      chrome.storage.local.set({
+        analytics: {
+          lastEvent: event,
+          timestamp: Date.now(),
+          // No personal data stored
+        }
+      });
+    }
+  }
+}
+```
+
+### Support & Troubleshooting
+- **📚 Documentation**: Comprehensive user guide and API docs
+- **🐛 Issue Tracking**: GitHub issues for bug reports and features
+- **💬 User Support**: Clear error messages and help tooltips
+- **🔍 Debug Mode**: Developer tools for advanced troubleshooting
+
+---
+
+## 🚨 Risk Mitigation
+
+### Fallback Strategies
+1. **AI Unavailable**: Graceful degradation with user notification
+2. **Network Issues**: Offline translation queue with sync capability
+3. **Performance**: Progressive loading and user-controlled settings
+4. **Compatibility**: Feature detection and polyfill strategies
+
+### Security Considerations
+- **🔐 Content Security**: Validate all translated content
+- **🛡️ Input Sanitization**: Prevent XSS in translation inputs
+- **🔒 Data Protection**: No storage of sensitive user content
+- **🚫 Abuse Prevention**: Rate limiting and usage monitoring
+
+---
+
+## 📈 Future Enhancements
+
+### Phase 7: Advanced Features (Post-MVP)
+1. **🎯 Smart Language Detection**: Auto-detect source/target languages
+2. **🌐 Multi-Language Support**: Expand to 50+ languages
+3. **📱 Mobile Optimization**: Responsive design for mobile browsers
+4. **☁️ Cloud Sync**: Cross-device translation history
+5. **🎨 Customization**: Themes, fonts, and layout options
+
+### Phase 8: AI Enhancements
+1. **🧠 Context Awareness**: Domain-specific translation models
+2. **📝 Writing Assistance**: Grammar and style suggestions
+3. **🔊 Audio Support**: Text-to-speech for translated content
+4. **🖼️ Visual Translation**: OCR for images and screenshots
+
+---
+
+## ✅ Success Criteria & Validation
+
+### Launch Readiness Checklist
+- [ ] All core features implemented and tested
+- [ ] Performance benchmarks achieved (< 2s response time)
+- [ ] Cross-browser compatibility verified
+- [ ] Security audit completed
+- [ ] User documentation published
+- [ ] Chrome Web Store assets prepared
+- [ ] Beta testing feedback incorporated
+
+### Post-Launch Metrics
+- 📊 Daily Active Users > 1,000
+- ⭐ Average Rating > 4.5 stars
+- 🔄 Retention Rate > 70% after 7 days
+- 🚀 Translation Success Rate > 95%
+- 💬 User Satisfaction Score > 8/10
+
+---
 
 **Agent, your task is fully defined. Start execution from Phase 1.**
