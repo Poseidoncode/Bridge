@@ -2,7 +2,7 @@
 
 Your task is to develop a Chrome extension named "TranslationGummy" that provides an immersive web communication experience, combining full-page translation reading with seamless native language input and writing.
 
-Follow the phases and steps strictly. Wait for the next instruction after each step completion.
+Follow the phases and steps strictly. Ensure each step is fully completed before proceeding to the next one.
 
 ## Phase 0: Knowledge Acquisition
 
