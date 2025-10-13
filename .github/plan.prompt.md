@@ -311,6 +311,8 @@ Modify root `index.html` as the popup carrier.
 
 ## Phase 5: Implement "Immersive Reading Mode" MVP
 
+**Note:** The translation results should be presented in a bilingual comparison format, where the original text remains visible alongside the translated text for easy reference and comparison.
+
 ### Instruction 5.1:
 Return to `src/content.ts`. Append message listener logic from Popup and implement page translation and revert.
 
@@ -425,6 +427,6 @@ Provide the following steps to for testing:
 4. Select the `dist` folder in your project.
 5. "TranslationGummy" extension should now be installed.
 6. **Test Writing**: Go to any site (e.g., Google Search), type Chinese in an input box, then press `Shift+Enter`. Text should translate to English.
-7. **Test Reading**: Go to an English site (e.g., BBC News), click the TranslationGummy icon in top right, toggle "Enable Immersive Reading". Translated Chinese should appear below paragraphs.
+7. **Test Reading**: Go to an English site (e.g., BBC News), click the TranslationGummy icon in top right, toggle "Enable Immersive Reading". The page should display bilingual comparison format with original English text and translated Chinese text side by side or in a comparable layout for easy reference.
 
 **Agent, your task is fully defined. Start execution from Phase 1.**
