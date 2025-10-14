@@ -60,13 +60,13 @@ document.addEventListener('keydown', async (event) => {
           console.log(`Translation model for ${targetLang} needs to be downloaded - download should start automatically`);
 
           // Show download progress to user with more informative message
-          finalText = `[翻譯模型自動下載中 (${targetLang})，請稍候...] ${originalText}`;
+          finalText = `[Translation model is downloading (${targetLang}) — please wait...] ${originalText}`;
 
           // Note: Chrome automatically starts downloading the model when availability() is called
           // The download happens in the background and may take several minutes
         } else {
           console.warn(`Translation not available for target language: ${targetLang}`);
-          finalText = `[翻譯功能暫不可用:${targetLang}] ${originalText}`;
+          finalText = `[Translation temporarily unavailable: ${targetLang}] ${originalText}`;
         }
       } else {
         // Fallback for browsers that don't support Translator API yet
@@ -90,7 +90,7 @@ document.addEventListener('keydown', async (event) => {
       console.error("TranslationGummy Translator Error:", error);
       // Provide user feedback on error
       if (activeElement) {
-        const errorText = `[翻譯錯誤] ${originalText}`;
+        const errorText = `[Translation error] ${originalText}`;
         if (activeElement.isContentEditable) {
           activeElement.textContent = errorText;
         } else {
@@ -117,7 +117,7 @@ async function translatePage() {
     // Show loading indicator
     const loadingDiv = document.createElement('div');
     loadingDiv.id = 'translationgummy-loading';
-    loadingDiv.textContent = '翻譯中...';
+    loadingDiv.textContent = 'Translating...';
     loadingDiv.style.cssText = `
       position: fixed;
       top: 20px;
@@ -203,7 +203,7 @@ async function translatePage() {
 
     // Show error message briefly
     const errorDiv = document.createElement('div');
-    errorDiv.textContent = '翻譯失敗，請稍後再試';
+    errorDiv.textContent = 'Translation failed, please try again later';
     errorDiv.style.cssText = `
       position: fixed;
       top: 20px;
@@ -282,10 +282,10 @@ async function translateText(text: string, targetLang: string): Promise<string |
 
     if (availability === 'downloadable') {
       console.log(`Translation model for ${targetLang} needs to be downloaded`);
-      return `[翻譯模型下載中，請稍候...] ${text}`;
+      return `[Translation model downloading, please wait...] ${text}`;
     } else if (availability !== 'available') {
       console.warn(`Translation not available for target language: ${targetLang}`);
-      return `[翻譯功能暫不可用:${targetLang}] ${text}`;
+      return `[Translation temporarily unavailable: ${targetLang}] ${text}`;
     }
 
     // Create translator instance with error handling
@@ -297,7 +297,7 @@ async function translateText(text: string, targetLang: string): Promise<string |
       });
     } catch (createError) {
       console.error('Error creating translator:', createError);
-      return `[翻譯器創建失敗:${targetLang}] ${text}`;
+      return `[Failed to create translator: ${targetLang}] ${text}`;
     }
 
     // Perform translation with timeout
@@ -311,7 +311,7 @@ async function translateText(text: string, targetLang: string): Promise<string |
     return result;
   } catch (e) {
     console.error("Translation error:", e);
-    return `[翻譯錯誤:${targetLang}] ${text}`;
+    return `[Translation error: ${targetLang}] ${text}`;
   }
 }
 
