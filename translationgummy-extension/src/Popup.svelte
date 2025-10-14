@@ -129,13 +129,40 @@
 </script>
 
 <main>
+  <div class="rain-container">
+    <div class="raindrop" style="--i: 0; --color: #4285F4; --delay: 0s;"></div>
+    <div
+      class="raindrop"
+      style="--i: 1; --color: #DB4437; --delay: 0.5s;"
+    ></div>
+    <div class="raindrop" style="--i: 2; --color: #F4B400; --delay: 1s;"></div>
+    <div
+      class="raindrop"
+      style="--i: 3; --color: #0F9D58; --delay: 1.5s;"
+    ></div>
+    <div class="raindrop" style="--i: 4; --color: #4285F4; --delay: 2s;"></div>
+    <div
+      class="raindrop"
+      style="--i: 5; --color: #DB4437; --delay: 2.5s;"
+    ></div>
+    <div class="raindrop" style="--i: 6; --color: #F4B400; --delay: 3s;"></div>
+    <div
+      class="raindrop"
+      style="--i: 7; --color: #0F9D58; --delay: 3.5s;"
+    ></div>
+    <div class="raindrop" style="--i: 8; --color: #4285F4; --delay: 4s;"></div>
+    <div
+      class="raindrop"
+      style="--i: 9; --color: #DB4437; --delay: 4.5s;"
+    ></div>
+  </div>
   <div class="glow-effect"></div>
 
   <div class="header">
     <div class="logo-container">
       <div class="logo-glow"></div>
       <h1>
-        <span class="logo-text">Bridge1</span>
+        <span class="logo-text">Bridge</span>
       </h1>
       <div class="subtitle">AI Translation Engine</div>
     </div>
@@ -232,21 +259,19 @@
 
 <style>
   main {
-    width: 360px;
+    /* width: 360px; */
+    width: 400px;
     /* min-height: 480px; */
     padding: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
       "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-    background: radial-gradient(circle at 20% 50%, #4285f4 0%, transparent 50%),
-      radial-gradient(circle at 80% 50%, #ea4335 0%, transparent 50%),
-      radial-gradient(circle at 40% 80%, #fbbc05 0%, transparent 50%),
-      radial-gradient(circle at 60% 20%, #34a853 0%, transparent 50%);
+    background: #111;
     position: relative;
     overflow: hidden;
     color: #fff;
     border-radius: 20px;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   }
 
   .glow-effect {
@@ -270,6 +295,46 @@
     }
     to {
       transform: rotate(360deg);
+    }
+  }
+
+  /* Rain Animation */
+  .rain-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .raindrop {
+    position: absolute;
+    width: 3px;
+    height: 15px;
+    background: var(--color);
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    left: calc(var(--i) * 10% + 5px);
+    top: -20px;
+    animation: rain calc(6s + var(--delay)) linear infinite;
+  }
+
+  @keyframes rain {
+    0% {
+      transform: translateY(0) scaleY(1);
+      opacity: 0;
+    }
+    10% {
+      opacity: 1;
+    }
+    90% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(400px) scaleY(0.5);
+      opacity: 0;
     }
   }
 
