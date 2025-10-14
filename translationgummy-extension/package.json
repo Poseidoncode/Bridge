@@ -8,7 +8,7 @@
     "build": "vite build && node ./scripts/copy-content-css.js",
     "preview": "vite preview",
     "generate-icons": "node generate-icons.js",
-    "package": "npm run generate-icons && npm run build",
+    "package": "npm run build && node generate-icons.js icon-source.png",
     "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json"
   },
   "devDependencies": {

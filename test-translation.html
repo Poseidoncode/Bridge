@@ -59,7 +59,7 @@
         <ol>
             <li>載入此擴展到Chrome</li>
             <li>在此頁面上測試翻譯功能</li>
-            <li>聚焦在輸入框，然後按 <kbd>Shift</kbd> + <kbd>Enter</kbd> 來觸發翻譯</li>
+            <li>聚焦在輸入框，然後按 <kbd>Shift</kbd> + <kbd>S</kbd> 來觸發翻譯</li>
             <li>檢查控制台以查看偵錯訊息</li>
         </ol>
     </div>
@@ -68,14 +68,14 @@
         <h2>輸入框測試</h2>
         <p>請在下面的輸入框輸入中文文字：</p>
         <input type="text" id="testInput" placeholder="請輸入要翻譯的中文文字...">
-        <p><small>💡 聚焦在輸入框後按 <kbd>Shift</kbd> + <kbd>Enter</kbd> 來翻譯</small></p>
+        <p><small>💡 聚焦在輸入框後按 <kbd>Shift</kbd> + <kbd>S</kbd> 來翻譯</small></p>
     </div>
 
     <div class="test-section">
         <h2>文字區域測試</h2>
         <p>請在下面的文字區域輸入較長的中文文字：</p>
         <textarea id="testTextarea" rows="4" placeholder="請輸入要翻譯的中文文字..."></textarea>
-        <p><small>💡 聚焦在文字區域後按 <kbd>Shift</kbd> + <kbd>Enter</kbd> 來翻譯</small></p>
+        <p><small>💡 聚焦在文字區域後按 <kbd>Shift</kbd> + <kbd>S</kbd> 來翻譯</small></p>
     </div>
 
     <div class="test-section">
@@ -127,11 +127,11 @@
 
         // 監聽輸入框焦點事件來顯示提示
         document.getElementById('testInput').addEventListener('focus', function() {
-            console.log('🔍 輸入框已聚焦，按 Shift + Enter 來翻譯');
+            console.log('🔍 輸入框已聚焦，按 Shift + S 來翻譯');
         });
 
         document.getElementById('testTextarea').addEventListener('focus', function() {
-            console.log('🔍 文字區域已聚焦，按 Shift + Enter 來翻譯');
+            console.log('🔍 文字區域已聚焦，按 Shift + S 來翻譯');
         });
 
         // 檢查擴展狀態

@@ -13,9 +13,9 @@ document.addEventListener('focusin', (event) => {
   }
 });
 
-// Listen for keyboard events, trigger translation on Shift+Enter
+// Listen for keyboard events, trigger translation on Shift+S
 document.addEventListener('keydown', async (event) => {
-  if (event.key === 'Enter' && event.shiftKey && activeElement) {
+  if (event.key === 'S' && event.shiftKey && activeElement) {
     event.preventDefault(); // Prevent default newline behavior
 
     const originalText = activeElement.isContentEditable ? activeElement.innerText : activeElement.value;
