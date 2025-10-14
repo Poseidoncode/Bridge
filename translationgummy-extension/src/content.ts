@@ -155,11 +155,17 @@ async function translatePage() {
           // Store original text for potential reversion
           (node as any).dataset.translationgummyOriginal = node.textContent || '';
 
-          // Create translation text with line breaks
-          const translationText = `\n\n${result.value}`;
+          // Create a line break element and translation text
+          // const lineBreak = document.createElement('br');
+          // const lineBreak2 = document.createElement('br');
 
-          // Append translation to original text
-          node.textContent += translationText;
+          // Create translation text node
+          const translationTextNode = document.createTextNode(result.value);
+
+          // Append line breaks and translation to the node
+          // node.appendChild(lineBreak);
+          // node.appendChild(lineBreak2);
+          node.appendChild(translationTextNode);
         } catch (error) {
           console.error('Error modifying node:', error);
         }
