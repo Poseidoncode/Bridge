@@ -86,7 +86,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 
 async function translatePage() {
   const settings = await chrome.storage.sync.get(['targetReadLang']);
-  const targetLang = settings.targetReadLang || 'zh-TW';
+  const targetLang = settings.targetReadLang || 'en'; // Default to English for reading translation
 
   const nodes = document.querySelectorAll('p, h1, h2, h3, li, blockquote');
   const translationPromises = [];

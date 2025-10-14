@@ -37,22 +37,58 @@
 <main>
   <h1>TranslationGummy</h1>
   <div class="setting-row">
-    <label for="reading-toggle">Enable Immersive Reading</label>
+    <div>
+      <label for="reading-toggle">啟用沉浸式閱讀</label>
+      <small style="display: block; color: #666; font-size: 11px;">將網頁內容翻譯成雙語顯示模式</small>
+    </div>
     <input type="checkbox" id="reading-toggle" bind:checked={readingEnabled} onchange={handleToggleChange} />
   </div>
   <div class="setting-row">
-    <label for="write-lang">Writing Target Language</label>
+    <div>
+      <label for="write-lang">寫作目標語言</label>
+      <small style="display: block; color: #666; font-size: 11px;">選擇輸入文字時要翻譯成的語言</small>
+    </div>
     <select id="write-lang" bind:value={targetWriteLang}>
       <option value="en">English</option>
-      <option value="ja">Japanese</option>
-      <option value="ko">Korean</option>
+      <option value="ja">日本語</option>
+      <option value="ko">한국어</option>
+      <option value="fr">Français</option>
+      <option value="de">Deutsch</option>
+      <option value="es">Español</option>
+      <option value="it">Italiano</option>
+      <option value="pt">Português</option>
+      <option value="ru">Русский</option>
+      <option value="ar">العربية</option>
+      <option value="hi">हिन्दी</option>
+      <option value="th">ไทย</option>
+      <option value="vi">Tiếng Việt</option>
+      <option value="id">Bahasa Indonesia</option>
+      <option value="ms">Bahasa Melayu</option>
     </select>
   </div>
   <div class="setting-row">
-    <label for="read-lang">Reading Target Language</label>
+    <div>
+      <label for="read-lang">閱讀目標語言</label>
+      <small style="display: block; color: #666; font-size: 11px;">選擇頁面翻譯時要翻譯成的語言</small>
+    </div>
     <select id="read-lang" bind:value={targetReadLang}>
-      <option value="zh-TW">Traditional Chinese</option>
-      <option value="zh-CN">Simplified Chinese</option>
+      <option value="en">English</option>
+      <option value="zh-TW">繁體中文</option>
+      <option value="zh-CN">简体中文</option>
+      <option value="ja">日本語</option>
+      <option value="ko">한국어</option>
+      <option value="fr">Français</option>
+      <option value="de">Deutsch</option>
+      <option value="es">Español</option>
+      <option value="it">Italiano</option>
+      <option value="pt">Português</option>
+      <option value="ru">Русский</option>
+      <option value="ar">العربية</option>
+      <option value="hi">हिन्दी</option>
+      <option value="th">ไทย</option>
+      <option value="vi">Tiếng Việt</option>
+      <option value="id">Bahasa Indonesia</option>
+      <option value="ms">Bahasa Melayu</option>
     </select>
   </div>
 </main>
