@@ -13,6 +13,55 @@ document.addEventListener('focusin', (event) => {
   }
 });
 
+// Listen for page navigation events
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('Page DOM loaded, resetting translation state...');
+  handlePageNavigation();
+});
+
+// Listen for history changes (back/forward navigation)
+window.addEventListener('popstate', () => {
+  console.log('Page navigation detected, resetting translation state...');
+  handlePageNavigation();
+});
+
+// Listen for pushstate/replacestate changes (SPA navigation)
+const originalPushState = history.pushState;
+const originalReplaceState = history.replaceState;
+
+history.pushState = function(...args) {
+  originalPushState.apply(history, args);
+  console.log('pushState detected, resetting translation state...');
+  handlePageNavigation();
+};
+
+history.replaceState = function(...args) {
+  originalReplaceState.apply(history, args);
+  console.log('replaceState detected, resetting translation state...');
+  handlePageNavigation();
+};
+
+// Function to handle page navigation
+async function handlePageNavigation() {
+  try {
+    // Clear any existing translations on the page
+    revertPage();
+
+    // Reset translation state in storage
+    await chrome.storage.local.set({ translationToggleState: false });
+
+    // Notify popup to reset switch state
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tabs[0] && tabs[0].id) {
+      await chrome.tabs.sendMessage(tabs[0].id, { action: "resetTranslationState" });
+    }
+
+    console.log('Translation state reset due to page navigation');
+  } catch (error) {
+    console.error('Error handling page navigation:', error);
+  }
+}
+
 // Listen for keyboard events, trigger translation on Shift+S
 document.addEventListener('keydown', async (event) => {
   if (event.key === 'S' && event.shiftKey && activeElement) {
@@ -233,6 +282,11 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     console.log('Updating existing translations...');
     await updateExistingTranslations();
     console.log('Existing translations updated');
+  } else if (message.action === "resetTranslationState") {
+    console.log('Resetting translation state from popup');
+    // This message is sent from content script to itself, no action needed
+    sendResponse({ success: true });
+    return true;
   } else if (message.action === "getPageTranslationStatus") {
     // Return current page translation status
     const translatedElements = document.querySelectorAll('.translationgummy-translated');
