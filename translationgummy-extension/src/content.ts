@@ -156,7 +156,7 @@ async function translatePage() {
           (node as any).dataset.translationgummyOriginal = node.textContent || '';
 
           // Create a line break element and translation text
-          // const lineBreak = document.createElement('br');
+          const lineBreak = document.createElement('br');
           // const lineBreak2 = document.createElement('br');
 
           // Create font element to wrap translation text
@@ -170,7 +170,7 @@ async function translatePage() {
           translationFont.appendChild(translationTextNode);
 
           // Append line breaks and translation font to the node
-          // node.appendChild(lineBreak);
+          node.appendChild(lineBreak);
           // node.appendChild(lineBreak2);
           node.appendChild(translationFont);
         } catch (error) {
