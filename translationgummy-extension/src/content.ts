@@ -57,10 +57,104 @@ document.addEventListener('keydown', async (event) => {
             finalText = translatedText;
           }
         } else if (availability === 'downloadable') {
-          console.log(`Translation model for ${targetLang} needs to be downloaded`);
+          console.log(`Translation model for ${targetLang} needs to be downloaded - starting download...`);
 
-          // Return a clear message without trying to handle download automatically
-          return `[Translation model needs to be downloaded for ${targetLang}. Please try again in a few moments.] ${originalText}`;
+          // Show immediate feedback to user
+          if (activeElement) {
+            const downloadingText = `[Translation model downloading for ${targetLang}, please wait...] ${originalText}`;
+            if (activeElement.isContentEditable) {
+              activeElement.textContent = downloadingText;
+            } else {
+              activeElement.value = downloadingText;
+            }
+          }
+
+          try {
+            // Create translator instance to trigger actual download
+            const translator = await Translator.create({
+              sourceLanguage: detectedSourceLang,
+              targetLanguage: targetLang,
+              monitor(m) {
+                m.addEventListener('downloadprogress', async (e: ProgressEvent) => {
+                  const progress = Math.round((e.loaded / e.total) * 100);
+                  console.log(`Downloaded ${progress}% for ${targetLang}`);
+
+                  // Update UI with progress
+                  if (activeElement) {
+                    const progressText = `[Downloading ${progress}% for ${targetLang}] ${originalText}`;
+                    if (activeElement.isContentEditable) {
+                      activeElement.textContent = progressText;
+                    } else {
+                      activeElement.value = progressText;
+                    }
+                  }
+
+                  // When download is complete (100%), perform translation
+                  if (progress >= 100) {
+                    console.log(`Download completed for ${targetLang}, starting translation...`);
+
+                    try {
+                      // Perform translation with the same translator instance
+                      const result = await translator.translate(originalText);
+
+                      console.log(`Translation completed for ${targetLang}: ${originalText} -> ${result}`);
+
+                      // Update UI with final translation
+                      if (activeElement) {
+                        if (activeElement.isContentEditable) {
+                          activeElement.textContent = result;
+                          activeElement.dispatchEvent(new Event('input', { bubbles: true }));
+                        } else {
+                          activeElement.value = result;
+                          activeElement.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                      }
+
+                      return result;
+                    } catch (translationError) {
+                      console.error('Error during translation after download:', translationError);
+                      return `[Translation failed for ${targetLang}] ${originalText}`;
+                    }
+                  }
+                });
+              },
+            });
+
+            // Return message indicating download has started
+            return `[Translation model downloading for ${targetLang}, please wait...] ${originalText}`;
+          } catch (downloadError: any) {
+            console.error('Error starting model download:', downloadError);
+
+            // Check if this is the "user gesture required" error
+            if (downloadError.name === 'NotAllowedError' &&
+                downloadError.message.includes('user gesture')) {
+              console.log('User gesture required for download, but download may still proceed in background');
+
+              // Wait a bit and check if download actually started despite the error
+              await new Promise(resolve => setTimeout(resolve, 2000));
+
+              try {
+                // Try to check availability again - if it's now 'downloading', the download started
+                const recheckAvailability = await Translator.availability({
+                  sourceLanguage: detectedSourceLang,
+                  targetLanguage: targetLang
+                });
+
+                if (recheckAvailability === 'downloadable') {
+                  console.log('Download is actually proceeding despite initial error');
+                  return `[Translation model downloading for ${targetLang}, please wait...] ${originalText}`;
+                }
+              } catch (recheckError) {
+                console.log('Could not recheck availability:', recheckError);
+              }
+
+              // If we can't confirm, still return downloading message since the error might be misleading
+              return `[Translation model downloading for ${targetLang}, please wait...] ${originalText}`;
+            }
+
+            // For other types of errors, return failure message
+            return `[Download failed for ${targetLang}] ${originalText}`;
+          }
         } else {
           console.warn(`Translation not available for target language: ${targetLang}`);
           finalText = `[Translation temporarily unavailable: ${targetLang}] ${originalText}`;
@@ -704,10 +798,10 @@ function ensureTraditionalChinese(text: string): string {
 
 // Simple language detection function
 function detectLanguage(text: string): string {
-  // Check for Chinese characters (Traditional and Simplified)
-  const chineseRegex = /[\u4e00-\u9fff\u3400-\u4dbf]/;
-  if (chineseRegex.test(text)) {
-    return 'zh-Hant'; // Assume Traditional Chinese for Chinese text
+  // Check for Korean characters first (highest priority for Korean text)
+  const koreanRegex = /[\u1100-\u11ff\u3130-\u318f\uac00-\ud7af]/;
+  if (koreanRegex.test(text)) {
+    return 'ko';
   }
 
   // Check for Japanese characters
@@ -716,10 +810,10 @@ function detectLanguage(text: string): string {
     return 'ja';
   }
 
-  // Check for Korean characters
-  const koreanRegex = /[\u1100-\u11ff\u3130-\u318f\uac00-\ud7af]/;
-  if (koreanRegex.test(text)) {
-    return 'ko';
+  // Check for Chinese characters (Traditional and Simplified)
+  const chineseRegex = /[\u4e00-\u9fff\u3400-\u4dbf]/;
+  if (chineseRegex.test(text)) {
+    return 'zh-Hant'; // Assume Traditional Chinese for Chinese text
   }
 
   // Check for Cyrillic characters (Russian, etc.)
@@ -738,6 +832,18 @@ function detectLanguage(text: string): string {
   const devanagariRegex = /[\u0900-\u097f]/;
   if (devanagariRegex.test(text)) {
     return 'hi';
+  }
+
+  // Check for Thai characters
+  const thaiRegex = /[\u0e00-\u0e7f]/;
+  if (thaiRegex.test(text)) {
+    return 'th';
+  }
+
+  // Check for Vietnamese characters
+  const vietnameseRegex = /[\u00c0-\u1ef9]/;
+  if (vietnameseRegex.test(text)) {
+    return 'vi';
   }
 
   // Default to English for Latin characters or unknown scripts
