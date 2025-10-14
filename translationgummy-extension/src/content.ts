@@ -159,20 +159,27 @@ async function translatePage() {
           const lineBreak = document.createElement('br');
           // const lineBreak2 = document.createElement('br');
 
-          // Create font element to wrap translation text
-          const translationFont = document.createElement('font');
-          translationFont.className = 'translationgummy-translation';
+          // Create outer wrapper for the translation
+          const translationWrapper = document.createElement('span');
+          translationWrapper.className = 'translationgummy-translation-wrapper';
+
+          // Create inner <font> element to hold the translation content
+          const translationContentFont = document.createElement('font');
+          translationContentFont.className = 'translationgummy-translation-content';
 
           // Create translation text node
           const translationTextNode = document.createTextNode(result.value);
 
-          // Append translation text to font element
-          translationFont.appendChild(translationTextNode);
+          // Append translation text to inner font element
+          translationContentFont.appendChild(translationTextNode);
 
-          // Append line breaks and translation font to the node
+          // Put the inner font into the wrapper and append to the node
+          translationWrapper.appendChild(translationContentFont);
+
+          // Append line breaks and translation wrapper to the node
           node.appendChild(lineBreak);
           // node.appendChild(lineBreak2);
-          node.appendChild(translationFont);
+          node.appendChild(translationWrapper);
         } catch (error) {
           console.error('Error modifying node:', error);
         }
