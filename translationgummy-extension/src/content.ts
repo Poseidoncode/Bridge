@@ -46,12 +46,13 @@ document.addEventListener('keydown', async (event) => {
           const translatedText = await translator.translate(originalText);
           finalText = translatedText;
         } else if (availability === 'downloadable') {
-          console.log(`Translation model for ${targetLang} needs to be downloaded`);
-          // Show download progress to user
-          finalText = `[翻譯模型下載中，請稍候...] ${originalText}`;
+          console.log(`Translation model for ${targetLang} needs to be downloaded - download should start automatically`);
 
-          // Note: In a real implementation, you would monitor the download progress
-          // and update the user interface accordingly
+          // Show download progress to user with more informative message
+          finalText = `[翻譯模型自動下載中 (${targetLang})，請稍候...] ${originalText}`;
+
+          // Note: Chrome automatically starts downloading the model when availability() is called
+          // The download happens in the background and may take several minutes
         } else {
           console.warn(`Translation not available for target language: ${targetLang}`);
           finalText = `[翻譯功能暫不可用:${targetLang}] ${originalText}`;
