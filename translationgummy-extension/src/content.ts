@@ -148,35 +148,20 @@ async function translatePage() {
       const result = translatedTexts[index];
       if (result.status === 'fulfilled' && result.value) {
         try {
-          // Create a container for vertical display (original on top, translation below)
-          const container = document.createElement('div');
-          container.className = 'translationgummy-vertical-container';
+          // Instead of creating a container, modify the original node directly
+          // Add translation class and data attribute to mark it as translated
+          node.classList.add('translationgummy-translated');
 
-          // Clone the original node and preserve its styling
-          const originalClone = node.cloneNode(true) as HTMLElement;
-          originalClone.className = 'translationgummy-original';
+          // Store original text for potential reversion
+          (node as any).dataset.translationgummyOriginal = node.textContent || '';
 
-          // Create translated node below the original
-          const translatedNode = document.createElement('font');
-          translatedNode.className = 'translationgummy-translation';
-          translatedNode.textContent = result.value;
-          // translatedNode.style.cssText = `
-          //   margin-top: 4px;
-          //   padding: 4px 0;
-          //   color: unset;
-          //   border-top: 1px solid #eee;
-          // `;
+          // Create translation text with line breaks
+          const translationText = `\n\n${result.value}`;
 
-          // Append original first, then translation below
-          container.appendChild(originalClone);
-          container.appendChild(translatedNode);
-
-          // Replace original node with container
-          if (node.parentNode) {
-            node.parentNode.replaceChild(container, node);
-          }
+          // Append translation to original text
+          node.textContent += translationText;
         } catch (error) {
-          console.error('Error replacing node:', error);
+          console.error('Error modifying node:', error);
         }
       }
     });
@@ -220,7 +205,22 @@ async function translatePage() {
 
 function revertPage() {
   try {
-    // Handle both old bilingual containers and new vertical containers
+    // Find all translated elements and restore their original text
+    const translatedElements = document.querySelectorAll('.translationgummy-translated');
+    translatedElements.forEach(element => {
+      try {
+        const originalText = (element as any).dataset.translationgummyOriginal;
+        if (originalText !== undefined) {
+          element.textContent = originalText;
+          element.classList.remove('translationgummy-translated');
+          delete (element as any).dataset.translationgummyOriginal;
+        }
+      } catch (error) {
+        console.error('Error reverting element:', error);
+      }
+    });
+
+    // Handle legacy containers (for backward compatibility)
     const containers = document.querySelectorAll('.translationgummy-bilingual-container, .translationgummy-vertical-container');
     containers.forEach(container => {
       try {
@@ -229,7 +229,7 @@ function revertPage() {
           container.parentNode.replaceChild(originalNode, container);
         }
       } catch (error) {
-        console.error('Error reverting container:', error);
+        console.error('Error reverting legacy container:', error);
       }
     });
 

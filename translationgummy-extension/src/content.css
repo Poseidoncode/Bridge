@@ -1,9 +1,9 @@
 /* File: src/content.css */
 .translationgummy-bilingual-container {
-  display: flex;
+  /* display: flex;
   gap: 1em;
   align-items: flex-start;
-  margin-bottom: 1em;
+  margin-bottom: 1em; */
 }
 
 .translationgummy-original {
