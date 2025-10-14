@@ -27,7 +27,19 @@ body {
   display: flex;
   place-items: center;
   min-width: 320px;
-  min-height: 100vh;
+  /* min-height: 100vh; */
+}
+
+/* Make extension popup background transparent and rounded so internal rounded main is visible */
+html, body, #app {
+  background: transparent !important;
+}
+
+/* If host (browser) paints a square background for the popup, ensure the page body clips to rounded corners */
+/* Add a wrapper clip to allow rounded corners to show in some hosts */
+body {
+  border-radius: 18px;
+  overflow: hidden;
 }
 
 h1 {
@@ -40,9 +52,9 @@ h1 {
 }
 
 #app {
-  max-width: 1280px;
+  /* max-width: 1280px; */
   margin: 0 auto;
-  padding: 2rem;
+  /* padding: 2rem; */
   text-align: center;
 }
 

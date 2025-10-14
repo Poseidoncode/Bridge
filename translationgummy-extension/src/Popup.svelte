@@ -229,13 +229,6 @@
       </select>
     </div>
   </div>
-
-  <div class="powered-by">
-    <span class="ai-badge">
-      <span class="badge-pulse"></span>
-      Powered by Google AI
-    </span>
-  </div>
 </main>
 
 <style>
@@ -246,7 +239,7 @@
 
   main {
     width: 360px;
-    min-height: 480px;
+    /* min-height: 480px; */
     padding: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
       "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
@@ -254,6 +247,7 @@
     position: relative;
     overflow: hidden;
     color: #fff;
+    border-radius: 20px;
   }
 
   /* 動態光效背景 */
@@ -379,7 +373,7 @@
   }
 
   .feature-card:hover {
-    transform: translateY(-2px);
+    /* transform: translateY(-2px); */
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
     background: rgba(255, 255, 255, 0.2);
   }
