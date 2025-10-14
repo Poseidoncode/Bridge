@@ -241,12 +241,10 @@
     position: relative;
     overflow: hidden;
     color: #fff;
-    border-radius: 20px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   }
 
-  /* 動態光效背景 */
   .glow-effect {
     position: absolute;
     top: -50%;
