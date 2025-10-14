@@ -18,8 +18,8 @@ document.addEventListener('keydown', async (event) => {
   if (event.key === 'S' && event.shiftKey && activeElement) {
     event.preventDefault(); // Prevent default newline behavior
 
-    const originalText = activeElement.isContentEditable ? activeElement.innerText : activeElement.value;
-    if (!originalText) return;
+    const originalText = activeElement.isContentEditable ? activeElement.textContent || '' : activeElement.value;
+    if (!originalText.trim()) return;
 
     // Get target language from chrome.storage
     const settings = await chrome.storage.sync.get(['targetWriteLang']);
@@ -76,13 +76,27 @@ document.addEventListener('keydown', async (event) => {
 
       if (finalText !== null) {
         if (activeElement.isContentEditable) {
-          activeElement.innerText = finalText;
+          // Use textContent for contentEditable elements to avoid HTML parsing issues
+          activeElement.textContent = finalText;
+          // Trigger input event to ensure any listeners are notified
+          activeElement.dispatchEvent(new Event('input', { bubbles: true }));
         } else {
           activeElement.value = finalText;
+          // Trigger input event for regular input elements
+          activeElement.dispatchEvent(new Event('input', { bubbles: true }));
         }
       }
     } catch (error) {
       console.error("TranslationGummy Translator Error:", error);
+      // Provide user feedback on error
+      if (activeElement) {
+        const errorText = `[翻譯錯誤] ${originalText}`;
+        if (activeElement.isContentEditable) {
+          activeElement.textContent = errorText;
+        } else {
+          activeElement.value = errorText;
+        }
+      }
     }
   }
 });
@@ -96,56 +110,137 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 });
 
 async function translatePage() {
-  const settings = await chrome.storage.sync.get(['targetReadLang']);
-  const targetLang = settings.targetReadLang || 'en'; // Default to English for reading translation
+  try {
+    const settings = await chrome.storage.sync.get(['targetReadLang']);
+    const targetLang = settings.targetReadLang || 'en'; // Default to English for reading translation
 
-  const nodes = document.querySelectorAll('p, h1, h2, h3, li, blockquote');
-  const translationPromises = [];
-  const originalNodes = [];
+    // Show loading indicator
+    const loadingDiv = document.createElement('div');
+    loadingDiv.id = 'translationgummy-loading';
+    loadingDiv.textContent = '翻譯中...';
+    loadingDiv.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #007bff;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 5px;
+      z-index: 10000;
+      font-family: Arial, sans-serif;
+    `;
+    document.body.appendChild(loadingDiv);
 
-  for (const node of nodes) {
-    if (node.textContent && node.textContent.trim().length > 10) { // Only translate texts with sufficient length
-      originalNodes.push(node);
-      translationPromises.push(translateText(node.textContent, targetLang));
+    const nodes = document.querySelectorAll('p, h1, h2, h3, li, blockquote');
+    const translationPromises = [];
+    const originalNodes = [];
+
+    for (const node of nodes) {
+      if (node.textContent && node.textContent.trim().length > 10) { // Only translate texts with sufficient length
+        originalNodes.push(node);
+        translationPromises.push(translateText(node.textContent, targetLang));
+      }
     }
+
+    const translatedTexts = await Promise.allSettled(translationPromises);
+
+    originalNodes.forEach((node, index) => {
+      const result = translatedTexts[index];
+      if (result.status === 'fulfilled' && result.value) {
+        try {
+          // Create a container for vertical display (original on top, translation below)
+          const container = document.createElement('div');
+          container.className = 'translationgummy-vertical-container';
+
+          // Clone the original node and preserve its styling
+          const originalClone = node.cloneNode(true) as HTMLElement;
+          originalClone.className = 'translationgummy-original';
+
+          // Create translated node below the original
+          const translatedNode = document.createElement('font');
+          translatedNode.className = 'translationgummy-translation';
+          translatedNode.textContent = result.value;
+          // translatedNode.style.cssText = `
+          //   margin-top: 4px;
+          //   padding: 4px 0;
+          //   color: unset;
+          //   border-top: 1px solid #eee;
+          // `;
+
+          // Append original first, then translation below
+          container.appendChild(originalClone);
+          container.appendChild(translatedNode);
+
+          // Replace original node with container
+          if (node.parentNode) {
+            node.parentNode.replaceChild(container, node);
+          }
+        } catch (error) {
+          console.error('Error replacing node:', error);
+        }
+      }
+    });
+
+    // Remove loading indicator
+    const loadingElement = document.getElementById('translationgummy-loading');
+    if (loadingElement) {
+      loadingElement.remove();
+    }
+
+  } catch (error) {
+    console.error('Error in translatePage:', error);
+
+    // Remove loading indicator on error
+    const loadingElement = document.getElementById('translationgummy-loading');
+    if (loadingElement) {
+      loadingElement.remove();
+    }
+
+    // Show error message briefly
+    const errorDiv = document.createElement('div');
+    errorDiv.textContent = '翻譯失敗，請稍後再試';
+    errorDiv.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #dc3545;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 5px;
+      z-index: 10000;
+      font-family: Arial, sans-serif;
+    `;
+    document.body.appendChild(errorDiv);
+
+    setTimeout(() => {
+      errorDiv.remove();
+    }, 3000);
   }
-
-  const translatedTexts = await Promise.all(translationPromises);
-
-  originalNodes.forEach((node, index) => {
-    const translatedText = translatedTexts[index];
-    if (translatedText) {
-      // Create a container for bilingual display
-      const container = document.createElement('div');
-      container.className = 'translationgummy-bilingual-container';
-      
-      // Clone the original node and wrap it
-      const originalClone = node.cloneNode(true) as HTMLElement;
-      originalClone.className = 'translationgummy-original';
-      
-      // Create translated node
-      const translatedNode = document.createElement('div');
-      translatedNode.className = 'translationgummy-translation';
-      translatedNode.textContent = translatedText;
-      
-      // Append to container
-      container.appendChild(originalClone);
-      container.appendChild(translatedNode);
-      
-      // Replace original node with container
-      node.parentNode?.replaceChild(container, node);
-    }
-  });
 }
 
 function revertPage() {
-  const containers = document.querySelectorAll('.translationgummy-bilingual-container');
-  containers.forEach(container => {
-    const originalNode = container.querySelector('.translationgummy-original');
-    if (originalNode) {
-      container.parentNode?.replaceChild(originalNode, container);
+  try {
+    // Handle both old bilingual containers and new vertical containers
+    const containers = document.querySelectorAll('.translationgummy-bilingual-container, .translationgummy-vertical-container');
+    containers.forEach(container => {
+      try {
+        const originalNode = container.querySelector('.translationgummy-original');
+        if (originalNode && container.parentNode) {
+          container.parentNode.replaceChild(originalNode, container);
+        }
+      } catch (error) {
+        console.error('Error reverting container:', error);
+      }
+    });
+
+    // Also remove any loading indicators that might be left over
+    const loadingElement = document.getElementById('translationgummy-loading');
+    if (loadingElement) {
+      loadingElement.remove();
     }
-  });
+  } catch (error) {
+    console.error('Error in revertPage:', error);
+  }
 }
 
 async function translateText(text: string, targetLang: string): Promise<string | null> {
@@ -173,19 +268,70 @@ async function translateText(text: string, targetLang: string): Promise<string |
       return `[翻譯功能暫不可用:${targetLang}] ${text}`;
     }
 
-    // Create translator instance
-    const translator = await Translator.create({
-      sourceLanguage: detectedSourceLang,
-      targetLanguage: targetLang
-    });
+    // Create translator instance with error handling
+    let translator;
+    try {
+      translator = await Translator.create({
+        sourceLanguage: detectedSourceLang,
+        targetLanguage: targetLang
+      });
+    } catch (createError) {
+      console.error('Error creating translator:', createError);
+      return `[翻譯器創建失敗:${targetLang}] ${text}`;
+    }
 
-    // Perform translation
-    const result = await translator.translate(text);
+    // Perform translation with timeout
+    const result = await Promise.race([
+      translator.translate(text),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Translation timeout')), 10000)
+      )
+    ]);
+
     return result;
   } catch (e) {
     console.error("Translation error:", e);
-    return `[translated:${targetLang}] ${text}`;
+    return `[翻譯錯誤:${targetLang}] ${text}`;
   }
+}
+
+// Function to ensure Traditional Chinese output
+function ensureTraditionalChinese(text: string): string {
+  // If the text contains mostly Simplified Chinese characters, convert to Traditional
+  // This is a basic implementation - for production, consider using a proper conversion library
+
+  // Check if text contains Simplified Chinese characters
+  const simplifiedChineseChars = ['爱', '为', '会', '国', '学', '生', '们', '说', '来', '去', '时', '年', '月', '日', '人', '大', '小', '长', '高', '低'];
+  const containsSimplified = simplifiedChineseChars.some(char => text.includes(char));
+
+  if (containsSimplified) {
+    // Basic character mapping for common Simplified to Traditional conversions
+    let converted = text
+      .replace(/爱/g, '愛')
+      .replace(/为/g, '為')
+      .replace(/会/g, '會')
+      .replace(/国/g, '國')
+      .replace(/学/g, '學')
+      .replace(/生/g, '生') // This one is the same
+      .replace(/们/g, '們')
+      .replace(/说/g, '說')
+      .replace(/来/g, '來')
+      .replace(/去/g, '去') // This one is the same
+      .replace(/时/g, '時')
+      .replace(/年/g, '年') // This one is the same
+      .replace(/月/g, '月') // This one is the same
+      .replace(/日/g, '日') // This one is the same
+      .replace(/人/g, '人') // This one is the same
+      .replace(/大/g, '大') // This one is the same
+      .replace(/小/g, '小') // This one is the same
+      .replace(/长/g, '長')
+      .replace(/高/g, '高') // This one is the same
+      .replace(/低/g, '低'); // This one is the same
+
+    return converted;
+  }
+
+  return text;
 }
 
 // Simple language detection function
