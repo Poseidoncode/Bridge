@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>翻譯測試頁面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .chinese-text {
+            background-color: #f9f9f9;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .instructions {
+            background-color: #e7f3ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 TranslationGummy 擴展測試頁面</h1>
+
+    <div class="instructions">
+        <h3>測試說明：</h3>
+        <ol>
+            <li>載入此擴展到Chrome</li>
+            <li>在此頁面上測試翻譯功能</li>
+            <li>聚焦在輸入框，然後按 <kbd>Shift</kbd> + <kbd>Enter</kbd> 來觸發翻譯</li>
+            <li>檢查控制台以查看偵錯訊息</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h2>輸入框測試</h2>
+        <p>請在下面的輸入框輸入中文文字：</p>
+        <input type="text" id="testInput" placeholder="請輸入要翻譯的中文文字...">
+        <p><small>💡 聚焦在輸入框後按 <kbd>Shift</kbd> + <kbd>Enter</kbd> 來翻譯</small></p>
+    </div>
+
+    <div class="test-section">
+        <h2>文字區域測試</h2>
+        <p>請在下面的文字區域輸入較長的中文文字：</p>
+        <textarea id="testTextarea" rows="4" placeholder="請輸入要翻譯的中文文字..."></textarea>
+        <p><small>💡 聚焦在文字區域後按 <kbd>Shift</kbd> + <kbd>Enter</kbd> 來翻譯</small></p>
+    </div>
+
+    <div class="test-section">
+        <h2>頁面翻譯測試</h2>
+        <p>這個段落有超過10個字符的中文內容，用來測試頁面翻譯功能。</p>
+        <p>這是另一個段落，包含了各種中文字符和符號。</p>
+        <h3>標題測試</h3>
+        <p>這是一個列表項目，用來測試頁面翻譯功能是否正常運作。</p>
+        <ul>
+            <li>列表項目一：測試中文翻譯功能</li>
+            <li>列表項目二：確認API調用是否正確</li>
+            <li>列表項目三：驗證錯誤處理機制</li>
+        </ul>
+        <blockquote>
+            這是一個引用區塊，測試翻譯功能是否支援這種HTML元素。
+        </blockquote>
+    </div>
+
+    <div class="test-section">
+        <h2>偵錯資訊</h2>
+        <p>請打開瀏覽器開發者工具的控制台來查看擴展的偵錯訊息。</p>
+        <button onclick="checkExtensionStatus()">檢查擴展狀態</button>
+        <button onclick="clearConsole()">清除控制台</button>
+        <p id="statusInfo"></p>
+    </div>
+
+    <script>
+        function checkExtensionStatus() {
+            const statusDiv = document.getElementById('statusInfo');
+
+            if (typeof window.__TRANSLATIONGUMMY_CONTENT_SCRIPT_LOADED !== 'undefined') {
+                statusDiv.innerHTML = '✅ 擴展內容腳本已載入';
+            } else {
+                statusDiv.innerHTML = '❌ 擴展內容腳本未載入';
+            }
+
+            // 檢查Translator API支援
+            if (typeof Translator !== 'undefined') {
+                statusDiv.innerHTML += '<br>✅ Translator API 可用';
+            } else {
+                statusDiv.innerHTML += '<br>❌ Translator API 不可用';
+            }
+        }
+
+        function clearConsole() {
+            console.clear();
+            document.getElementById('statusInfo').innerHTML = '控制台已清除';
+        }
+
+        // 監聽輸入框焦點事件來顯示提示
+        document.getElementById('testInput').addEventListener('focus', function() {
+            console.log('🔍 輸入框已聚焦，按 Shift + Enter 來翻譯');
+        });
+
+        document.getElementById('testTextarea').addEventListener('focus', function() {
+            console.log('🔍 文字區域已聚焦，按 Shift + Enter 來翻譯');
+        });
+
+        // 檢查擴展狀態
+        checkExtensionStatus();
+    </script>
+</body>
+</html>

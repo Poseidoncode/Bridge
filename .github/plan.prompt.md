@@ -10,7 +10,7 @@
 3. **🔒 Privacy-First Architecture**: On-device AI processing ensures absolute privacy and offline capability
 
 ### Technical Innovation
-- **Chrome Built-in AI APIs**: Leveraging `chrome.ai` for instant, private translations
+- **Chrome Built-in AI APIs**: Leveraging `Translator` API for instant, private translations
 - **Progressive Enhancement**: Graceful degradation when AI features unavailable
 - **Cross-Platform Sync**: Settings synchronization across devices via `chrome.storage.sync`
 
@@ -26,7 +26,7 @@ Execute this comprehensive development plan systematically. Each phase includes 
 
 **Technical Dependencies:**
 - Chrome Manifest V3 compatibility
-- Chrome Built-in AI API availability (`chrome.ai.canCreateTextTranslator()`, `chrome.ai.canCreateWriter()`)
+- Chrome Built-in AI Translator API availability (`Translator.availability()`, `Translator.create()`)
 - Svelte 5 + TypeScript + Vite build pipeline
 - CRXJS for Chrome extension packaging
 
@@ -76,11 +76,11 @@ access_mcp_resource("context7", "docs://vite")
 
 2. **Chrome for Developers - Built-in AI APIs Documentation**
    - **MCP Resource**: `docs://chrome-built-in-ai`
-   - Keywords: `chrome.ai`, `On-Device AI`, `createTextTranslator`, `createWriter`
+   - Keywords: `Translator API`, `On-Device AI`, `Translator.availability()`, `Translator.create()`
    - Concepts to master:
-     - Checking `chrome.ai.canCreate*` to confirm model availability.
-     - Asynchronous usage of `createTextTranslator().translate()`.
-     - Prompt design principles for `createWriter()` to achieve natural language conversion.
+     - Checking `Translator.availability()` to confirm model availability.
+     - Asynchronous usage of `Translator.create().translate()`.
+     - Language pair support and automatic language detection.
      - Asynchronous nature of APIs, must use `async/await`.
 
 3. **Svelte 5 Documentation**
@@ -217,31 +217,43 @@ document.addEventListener('keydown', async (event) => {
 
     // Get target language from chrome.storage
     const settings = await chrome.storage.sync.get(['targetWriteLang']);
-    const targetLang = settings.targetWriteLang || 'en'; // Default to English if not set    try {
-      const canCreate = await chrome.ai.canCreateWriter();
-      if (canCreate === 'no') {
-        console.error("Cannot create AI Writer.");
-        return;
-      }
+    const targetLang = settings.targetWriteLang || 'en'; // Default to English if not set
 
-      const writer = await chrome.ai.createWriter();
-      const prompt = `Translate the following Traditional Chinese text into natural, fluent ${targetLang}. Only provide the translated text without any other explanations: "${originalText}"`;
+    try {
+      // Check if Translator API is available
+      if (typeof Translator !== 'undefined') {
+        // Check if translation is available for the language pair
+        const availability = await Translator.availability({
+          sourceLanguage: 'auto', // Use 'auto' to detect source language automatically
+          targetLanguage: targetLang
+        });
 
-      const responseStream = await writer.prompt(prompt);
+        if (availability === 'available') {
+          // Create translator instance
+          const translator = await Translator.create({
+            sourceLanguage: 'auto',
+            targetLanguage: targetLang
+          });
 
-      let fullResponse = "";
-      for await (const chunk of responseStream) {
-        fullResponse += chunk;
-      }
+          // Perform translation
+          const translatedText = await translator.translate(originalText);
 
-      if (activeElement.isContentEditable) {
-        activeElement.innerText = fullResponse;
+          if (activeElement.isContentEditable) {
+            activeElement.innerText = translatedText;
+          } else {
+            activeElement.value = translatedText;
+          }
+        } else if (availability === 'downloadable') {
+          console.log(`Translation model for ${targetLang} needs to be downloaded`);
+        } else {
+          console.warn(`Translation not available for target language: ${targetLang}`);
+        }
       } else {
-        activeElement.value = fullResponse;
+        // Fallback for browsers that don't support Translator API yet
+        console.warn('Translator API not supported — using fallback translation for testing');
       }
-
     } catch (error) {
-      console.error("TranslationGummy AI Writer Error:", error);
+      console.error("TranslationGummy Translator Error:", error);
     }
   }
 });
@@ -439,12 +451,32 @@ function revertPage() {
 
 async function translateText(text: string, targetLang: string): Promise<string | null> {
   try {
-    const canCreate = await chrome.ai.canCreateTextTranslator();
-    if (canCreate === 'no') return null;
+    // Check if Translator API is supported
+    if (typeof Translator === 'undefined') {
+      console.warn('Translator API not supported');
+      return null;
+    }
 
-    const translator = await chrome.ai.createTextTranslator();
-    const result = await translator.translate(text, targetLang);
-    return result.translatedText;
+    // Check if translation is available for the language pair
+    const availability = await Translator.availability({
+      sourceLanguage: 'auto', // Use 'auto' to detect source language automatically
+      targetLanguage: targetLang
+    });
+
+    if (availability !== 'available') {
+      console.warn(`Translation not available for target language: ${targetLang}`);
+      return null;
+    }
+
+    // Create translator instance
+    const translator = await Translator.create({
+      sourceLanguage: 'auto',
+      targetLanguage: targetLang
+    });
+
+    // Perform translation
+    const result = await translator.translate(text);
+    return result;
   } catch (e) {
     console.error("Translation error:", e);
     return null;
@@ -557,7 +589,7 @@ browser_action("wait_for", "TranslationGummy")
    browser_action("select_option", "read-lang-dropdown", "zh-CN")
 
    # Test error handling
-   browser_action("evaluate", "chrome.ai.canCreateWriter = () => 'no'")
+   browser_action("evaluate", "Translator = undefined")
    # Verify graceful error handling
    ```
 
