@@ -57,83 +57,10 @@ document.addEventListener('keydown', async (event) => {
             finalText = translatedText;
           }
         } else if (availability === 'downloadable') {
-          console.log(`Translation model for ${targetLang} needs to be downloaded - starting download...`);
+          console.log(`Translation model for ${targetLang} needs to be downloaded`);
 
-          try {
-            // Create translator instance to trigger actual download
-            const translator = await Translator.create({
-              sourceLanguage: detectedSourceLang,
-              targetLanguage: targetLang,
-              monitor(m) {
-                m.addEventListener('downloadprogress', async (e: ProgressEvent) => {
-                  const progress = Math.round(e.loaded * 100);
-                  console.log(`Downloaded ${progress}% for ${targetLang}`);
-
-                  // Update UI with actual progress
-                  finalText = `[Downloading ${targetLang} model: ${progress}%] ${originalText}`;
-
-                  // Update the active element with progress
-                  if (activeElement) {
-                    if (activeElement.isContentEditable) {
-                      activeElement.textContent = finalText;
-                    } else {
-                      activeElement.value = finalText;
-                    }
-                  }
-
-                  // When download is complete (100%), perform translation
-                  if (progress >= 100) {
-                    console.log(`Download completed for ${targetLang}, starting translation...`);
-
-                    try {
-                      // Perform translation with the same translator instance
-                      const translatedText = await translator.translate(originalText);
-
-                      // Post-process translation for Traditional Chinese if needed
-                      if (targetLang === 'zh-Hant') {
-                        finalText = ensureTraditionalChinese(translatedText);
-                      } else {
-                        finalText = translatedText;
-                      }
-
-                      // Update the active element with the actual translation
-                      if (activeElement) {
-                        if (activeElement.isContentEditable) {
-                          activeElement.textContent = finalText;
-                          activeElement.dispatchEvent(new Event('input', { bubbles: true }));
-                        } else {
-                          activeElement.value = finalText;
-                          activeElement.dispatchEvent(new Event('input', { bubbles: true }));
-                        }
-                      }
-
-                      console.log(`Translation completed for ${targetLang}: ${originalText} -> ${finalText}`);
-                    } catch (translationError) {
-                      console.error('Error during translation after download:', translationError);
-                      finalText = `[Translation failed for ${targetLang}] ${originalText}`;
-
-                      if (activeElement) {
-                        if (activeElement.isContentEditable) {
-                          activeElement.textContent = finalText;
-                        } else {
-                          activeElement.value = finalText;
-                        }
-                      }
-                    }
-                  }
-                });
-              },
-            });
-
-            // Show initial download message
-            finalText = `[Starting download for ${targetLang} model...] ${originalText}`;
-
-            // Note: The download happens in the background and may take several minutes
-            // Translation will be performed automatically when download reaches 100%
-          } catch (downloadError) {
-            console.error('Error starting model download:', downloadError);
-            finalText = `[Download failed for ${targetLang}] ${originalText}`;
-          }
+          // Return a clear message without trying to handle download automatically
+          return `[Translation model needs to be downloaded for ${targetLang}. Please try again in a few moments.] ${originalText}`;
         } else {
           console.warn(`Translation not available for target language: ${targetLang}`);
           finalText = `[Translation temporarily unavailable: ${targetLang}] ${originalText}`;
@@ -178,20 +105,20 @@ chrome.storage.onChanged.addListener(async (changes, namespace) => {
     const writeLangChanged = changes.targetWriteLang && changes.targetWriteLang.newValue !== changes.targetWriteLang.oldValue;
 
     if (readLangChanged || writeLangChanged) {
-      console.log('Language settings changed, checking if page needs re-translation...');
+      console.log('Language settings changed, reverting and re-translating...');
 
       // Check if page is currently translated
       const translatedElements = document.querySelectorAll('.translationgummy-translated');
       if (translatedElements.length > 0) {
-        console.log('Page is translated, reverting and re-translating with new language settings...');
+        console.log('Page is translated, reverting first...');
 
         // First revert the page to get original content back
         revertPage();
 
-        // Then translate with new language settings
+        // Then translate with new language settings after a short delay
         setTimeout(async () => {
           await translatePage();
-        }, 100); // Small delay to ensure DOM is updated
+        }, 100);
       }
     }
   }
@@ -320,6 +247,7 @@ async function translatePage() {
     );
 
     let successCount = 0;
+    let downloadPending = false;
 
     translationResults.forEach((result, index) => {
       const task = tasks[index];
@@ -328,6 +256,11 @@ async function translatePage() {
       }
 
       if (result.status === 'fulfilled' && result.value) {
+        if (typeof result.value === 'string' && isModelDownloadPlaceholder(result.value)) {
+          downloadPending = true;
+          return;
+        }
+
         if (task.mode === 'inline' && result.value.startsWith('[')) {
           console.warn('Skipping inline translation due to fallback result:', result.value);
           return;
@@ -354,10 +287,13 @@ async function translatePage() {
       `Translation completed: ${tasks.length} tasks processed (block: ${blockTaskCount}, inline: ${inlineTaskCount}), ${successCount} successful translations`
     );
 
-    // Remove loading indicator
     const loadingElement = document.getElementById('translationgummy-loading');
     if (loadingElement) {
-      loadingElement.remove();
+      if (downloadPending) {
+        loadingElement.textContent = 'Downloading translation model...';
+      } else {
+        loadingElement.remove();
+      }
     }
 
   } catch (error) {
@@ -951,6 +887,7 @@ async function performPageTranslation(targetLang: string) {
     );
 
     let successCount = 0;
+    let downloadPending = false;
 
     translationResults.forEach((result, index) => {
       const task = tasks[index];
@@ -959,6 +896,11 @@ async function performPageTranslation(targetLang: string) {
       }
 
       if (result.status === 'fulfilled' && result.value) {
+        if (typeof result.value === 'string' && isModelDownloadPlaceholder(result.value)) {
+          downloadPending = true;
+          return;
+        }
+
         if (task.mode === 'inline' && result.value.startsWith('[')) {
           console.warn('Skipping inline translation due to fallback result:', result.value);
           return;
@@ -988,8 +930,12 @@ async function performPageTranslation(targetLang: string) {
     // Update loading indicator to show completion
     const loadingElement = document.getElementById('translationgummy-loading');
     if (loadingElement) {
-      loadingElement.textContent = 'Translation completed';
-      setTimeout(() => loadingElement.remove(), 2000);
+      if (downloadPending) {
+        loadingElement.textContent = 'Downloading translation model...';
+      } else {
+        loadingElement.textContent = 'Translation completed';
+        setTimeout(() => loadingElement.remove(), 2000);
+      }
     }
 
   } catch (error) {
@@ -1088,6 +1034,64 @@ async function pollForTranslationCompletion(sourceLang: string, targetLang: stri
       }
     }
   }, 10000); // Check every 10 seconds
+}
+
+function isModelDownloadPlaceholder(text: string): boolean {
+  return text.includes('Translation model downloading') || text.includes('Translation model needs to be downloaded');
+}
+
+// Function to update existing translations when language settings change
+async function updateExistingTranslations() {
+  try {
+    // Get new target language from storage
+    const settings = await chrome.storage.sync.get(['targetReadLang']);
+    const newTargetLang = settings.targetReadLang || 'en';
+
+    console.log(`Updating existing translations to language: ${newTargetLang}`);
+
+    // Update block translations
+    const translatedElements = document.querySelectorAll<HTMLElement>('.translationgummy-translated');
+    for (const element of translatedElements) {
+      const originalText = element.dataset.translationgummyOriginal;
+      if (originalText) {
+        try {
+          const translatedText = await translateText(originalText, newTargetLang);
+          if (translatedText && !translatedText.startsWith('[')) {
+            // Update the translation content
+            const existingWrapper = element.querySelector(':scope > .translationgummy-translation-wrapper');
+            if (existingWrapper) {
+              const translationContent = existingWrapper.querySelector('font.translationgummy-translation-content');
+              if (translationContent) {
+                translationContent.textContent = translatedText;
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error updating block translation:', error);
+        }
+      }
+    }
+
+    // Update inline translations
+    const inlineTranslatedElements = document.querySelectorAll<HTMLElement>('.translationgummy-inline-translated');
+    for (const element of inlineTranslatedElements) {
+      const originalText = element.dataset.translationgummyOriginalInline;
+      if (originalText) {
+        try {
+          const translatedText = await translateText(originalText, newTargetLang);
+          if (translatedText && !translatedText.startsWith('[')) {
+            replaceTextPreservingChildren(element, translatedText);
+          }
+        } catch (error) {
+          console.error('Error updating inline translation:', error);
+        }
+      }
+    }
+
+    console.log(`Translation update completed for ${newTargetLang}`);
+  } catch (error) {
+    console.error('Error in updateExistingTranslations:', error);
+  }
 }
 
 // Translator API type declarations
