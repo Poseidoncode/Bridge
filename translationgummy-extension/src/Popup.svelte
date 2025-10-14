@@ -148,8 +148,8 @@
         <span class="icon">🌐</span>
       </div>
       <div class="card-title">
-        <label for="translation-toggle">即時翻譯</label>
-        <small>一鍵將網頁內容轉換為您的母語</small>
+        <label for="translation-toggle">Real-time Translation</label>
+        <small>One-click webpage translation to your native language</small>
       </div>
       <label class="switch">
         <input
@@ -165,7 +165,7 @@
     <div class="language-selector">
       <div class="selector-label">
         <span class="label-icon">📖</span>
-        <span>閱讀語言</span>
+        <span>Reading Language</span>
       </div>
       <select id="read-lang" bind:value={targetReadLang} class="modern-select">
         <option value="en">🇬🇧 English</option>
@@ -195,15 +195,16 @@
         <span class="icon">✍️</span>
       </div>
       <div class="card-title">
-        <label for="write-lang">智能輸入</label>
-        <small>自動翻譯您的輸入文字為目標語言</small>
+        <label for="write-lang">Smart Input</label>
+        <small>Automatically translate your input text to target language</small
+        >
       </div>
     </div>
 
     <div class="language-selector">
       <div class="selector-label">
         <span class="label-icon">🎯</span>
-        <span>輸出語言</span>
+        <span>Output Language</span>
       </div>
       <select
         id="write-lang"
