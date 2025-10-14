@@ -135,8 +135,7 @@
     <div class="logo-container">
       <div class="logo-glow"></div>
       <h1>
-        <span class="logo-icon">🍬</span>
-        <span class="logo-text">Gummy</span>
+        <span class="logo-text">Bridge1</span>
       </h1>
       <div class="subtitle">AI Translation Engine</div>
     </div>
@@ -232,11 +231,6 @@
 </main>
 
 <style>
-  :global(body) {
-    margin: 0;
-    padding: 0;
-  }
-
   main {
     width: 360px;
     /* min-height: 480px; */
@@ -248,6 +242,8 @@
     overflow: hidden;
     color: #fff;
     border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   }
 
   /* 動態光效背景 */

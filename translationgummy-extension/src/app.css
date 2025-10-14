@@ -5,12 +5,24 @@
 
   color-scheme: light dark;
   color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Make extension popup background transparent so the main content can be seen */
+html {
+  background: transparent !important;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  background: transparent !important;
 }
 
 a {
@@ -20,26 +32,6 @@ a {
 }
 a:hover {
   color: #535bf2;
-}
-
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  /* min-height: 100vh; */
-}
-
-/* Make extension popup background transparent and rounded so internal rounded main is visible */
-html, body, #app {
-  background: transparent !important;
-}
-
-/* If host (browser) paints a square background for the popup, ensure the page body clips to rounded corners */
-/* Add a wrapper clip to allow rounded corners to show in some hosts */
-body {
-  border-radius: 18px;
-  overflow: hidden;
 }
 
 h1 {
@@ -52,10 +44,11 @@ h1 {
 }
 
 #app {
-  /* max-width: 1280px; */
   margin: 0 auto;
-  /* padding: 2rem; */
   text-align: center;
+  background: transparent !important;
+  border-radius: 20px;
+  overflow: hidden;
 }
 
 button {
