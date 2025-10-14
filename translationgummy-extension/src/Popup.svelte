@@ -9,12 +9,20 @@
 
   // On component mount, load settings from chrome.storage
   onMount(async () => {
-    const result = await chrome.storage.sync.get([
+    const syncResult = await chrome.storage.sync.get([
       "targetWriteLang",
       "targetReadLang",
     ]);
-    targetWriteLang = result.targetWriteLang ?? "en";
-    targetReadLang = result.targetReadLang ?? "zh-Hant";
+    targetWriteLang = syncResult.targetWriteLang ?? "en";
+    targetReadLang = syncResult.targetReadLang ?? "zh-Hant";
+
+    const localResult = await chrome.storage.local.get([
+      "translationToggleState",
+    ]);
+    if (typeof localResult.translationToggleState === "boolean") {
+      userIntendedState = localResult.translationToggleState;
+      currentPageTranslated = localResult.translationToggleState;
+    }
 
     // Check current page translation status
     await checkCurrentPageStatus();
@@ -96,6 +104,8 @@
       } else {
         console.error("No active tab found");
       }
+
+      await chrome.storage.local.set({ translationToggleState: newState });
     } catch (error) {
       console.error("Error in toggle change:", error);
       // Revert to actual state on error
@@ -116,10 +126,14 @@
         });
         if (response) {
           currentPageTranslated = response.isTranslated;
+          userIntendedState = response.isTranslated;
+          await chrome.storage.local.set({
+            translationToggleState: response.isTranslated,
+          });
         }
       }
     } catch (error) {
-      currentPageTranslated = false;
+      currentPageTranslated = userIntendedState;
     }
   }
 
