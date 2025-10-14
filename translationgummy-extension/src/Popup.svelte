@@ -138,7 +138,7 @@
   </div>
   <div class="setting-row">
     <div>
-      <label for="translation-toggle">Page Translation</label>
+      <label for="translation-toggle">Translation</label>
       <small style="display: block; color: #666; font-size: 11px;"
         >Translate current page content</small
       >
