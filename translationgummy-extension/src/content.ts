@@ -29,22 +29,33 @@ document.addEventListener('keydown', async (event) => {
     try {
       // Check if Translator API is available
       if (typeof Translator !== 'undefined') {
+        // For input translation, we need to detect the source language properly
+        // Since 'auto' doesn't work, we'll use a simple heuristic
+        const detectedSourceLang = detectLanguage(originalText);
+
         // Check if translation is available for the language pair
         const availability = await Translator.availability({
-          sourceLanguage: 'zh-TW', // Use Traditional Chinese as source language
+          sourceLanguage: detectedSourceLang,
           targetLanguage: targetLang
         });
 
         if (availability === 'available') {
-          // Create translator instance
+          // Create translator instance with explicit language specification
           const translator = await Translator.create({
-            sourceLanguage: 'zh-TW',
+            sourceLanguage: detectedSourceLang,
             targetLanguage: targetLang
           });
 
           // Perform translation
           const translatedText = await translator.translate(originalText);
-          finalText = translatedText;
+
+          // Post-process translation for Traditional Chinese if needed
+          if (targetLang === 'zh-TW') {
+            // Ensure Traditional Chinese output by converting if necessary
+            finalText = ensureTraditionalChinese(translatedText);
+          } else {
+            finalText = translatedText;
+          }
         } else if (availability === 'downloadable') {
           console.log(`Translation model for ${targetLang} needs to be downloaded - download should start automatically`);
 
@@ -145,9 +156,12 @@ async function translateText(text: string, targetLang: string): Promise<string |
       return `[translated:${targetLang}] ${text}`;
     }
 
+    // Detect source language from text content
+    const detectedSourceLang = detectLanguage(text);
+
     // Check if translation is available for the language pair
     const availability = await Translator.availability({
-      sourceLanguage: 'zh-TW', // Use Traditional Chinese as source language
+      sourceLanguage: detectedSourceLang,
       targetLanguage: targetLang
     });
 
@@ -161,7 +175,7 @@ async function translateText(text: string, targetLang: string): Promise<string |
 
     // Create translator instance
     const translator = await Translator.create({
-      sourceLanguage: 'zh-TW',
+      sourceLanguage: detectedSourceLang,
       targetLanguage: targetLang
     });
 
@@ -172,6 +186,48 @@ async function translateText(text: string, targetLang: string): Promise<string |
     console.error("Translation error:", e);
     return `[translated:${targetLang}] ${text}`;
   }
+}
+
+// Simple language detection function
+function detectLanguage(text: string): string {
+  // Check for Chinese characters (Traditional and Simplified)
+  const chineseRegex = /[\u4e00-\u9fff\u3400-\u4dbf]/;
+  if (chineseRegex.test(text)) {
+    return 'zh-TW'; // Assume Traditional Chinese for Chinese text
+  }
+
+  // Check for Japanese characters
+  const japaneseRegex = /[\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]/;
+  if (japaneseRegex.test(text)) {
+    return 'ja';
+  }
+
+  // Check for Korean characters
+  const koreanRegex = /[\u1100-\u11ff\u3130-\u318f\uac00-\ud7af]/;
+  if (koreanRegex.test(text)) {
+    return 'ko';
+  }
+
+  // Check for Cyrillic characters (Russian, etc.)
+  const cyrillicRegex = /[\u0400-\u04ff]/;
+  if (cyrillicRegex.test(text)) {
+    return 'ru';
+  }
+
+  // Check for Arabic characters
+  const arabicRegex = /[\u0600-\u06ff]/;
+  if (arabicRegex.test(text)) {
+    return 'ar';
+  }
+
+  // Check for Devanagari characters (Hindi, etc.)
+  const devanagariRegex = /[\u0900-\u097f]/;
+  if (devanagariRegex.test(text)) {
+    return 'hi';
+  }
+
+  // Default to English for Latin characters or unknown scripts
+  return 'en';
 }
 
 // Translator API type declarations
