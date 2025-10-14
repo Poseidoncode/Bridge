@@ -47,10 +47,14 @@ document.addEventListener('keydown', async (event) => {
           finalText = translatedText;
         } else if (availability === 'downloadable') {
           console.log(`Translation model for ${targetLang} needs to be downloaded`);
-          finalText = `[Translation model downloading for ${targetLang}] ${originalText}`;
+          // Show download progress to user
+          finalText = `[翻譯模型下載中，請稍候...] ${originalText}`;
+
+          // Note: In a real implementation, you would monitor the download progress
+          // and update the user interface accordingly
         } else {
           console.warn(`Translation not available for target language: ${targetLang}`);
-          finalText = `[Translation unavailable:${targetLang}] ${originalText}`;
+          finalText = `[翻譯功能暫不可用:${targetLang}] ${originalText}`;
         }
       } else {
         // Fallback for browsers that don't support Translator API yet
@@ -146,9 +150,12 @@ async function translateText(text: string, targetLang: string): Promise<string |
       targetLanguage: targetLang
     });
 
-    if (availability !== 'available') {
+    if (availability === 'downloadable') {
+      console.log(`Translation model for ${targetLang} needs to be downloaded`);
+      return `[翻譯模型下載中，請稍候...] ${text}`;
+    } else if (availability !== 'available') {
       console.warn(`Translation not available for target language: ${targetLang}`);
-      return `[translated:${targetLang}] ${text}`;
+      return `[翻譯功能暫不可用:${targetLang}] ${text}`;
     }
 
     // Create translator instance
