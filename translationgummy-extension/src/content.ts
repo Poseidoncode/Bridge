@@ -50,7 +50,7 @@ document.addEventListener('keydown', async (event) => {
           const translatedText = await translator.translate(originalText);
 
           // Post-process translation for Traditional Chinese if needed
-          if (targetLang === 'zh-TW') {
+          if (targetLang === 'zh-Hant') {
             // Ensure Traditional Chinese output by converting if necessary
             finalText = ensureTraditionalChinese(translatedText);
           } else {
@@ -399,7 +399,7 @@ function detectLanguage(text: string): string {
   // Check for Chinese characters (Traditional and Simplified)
   const chineseRegex = /[\u4e00-\u9fff\u3400-\u4dbf]/;
   if (chineseRegex.test(text)) {
-    return 'zh-TW'; // Assume Traditional Chinese for Chinese text
+    return 'zh-Hant'; // Assume Traditional Chinese for Chinese text
   }
 
   // Check for Japanese characters

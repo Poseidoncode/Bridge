@@ -3,7 +3,7 @@
 
   // Using Svelte 5 Runes
   let targetWriteLang = $state("en");
-  let targetReadLang = $state("zh-TW");
+  let targetReadLang = $state("zh-Hant");
   let currentPageTranslated = $state(false);
   let userIntendedState = $state(false); // Track user's intended state
 
@@ -14,7 +14,7 @@
       "targetReadLang",
     ]);
     targetWriteLang = result.targetWriteLang ?? "en";
-    targetReadLang = result.targetReadLang ?? "zh-TW";
+    targetReadLang = result.targetReadLang ?? "zh-Hant";
 
     // Check current page translation status
     await checkCurrentPageStatus();
@@ -144,7 +144,7 @@
       >
       <select id="read-lang" bind:value={targetReadLang}>
         <option value="en">English</option>
-        <option value="zh-TW">繁體中文</option>
+        <option value="zh-Hant">繁體中文</option>
         <option value="zh-CN">简体中文</option>
         <option value="ja">日本語</option>
         <option value="ko">한국어</option>
@@ -204,7 +204,7 @@
     </div>
     <select id="read-lang" bind:value={targetReadLang}>
       <option value="en">English</option>
-      <option value="zh-TW">繁體中文</option>
+      <option value="zh-Hant">繁體中文</option>
       <option value="zh-CN">简体中文</option>
       <option value="ja">日本語</option>
       <option value="ko">한국어</option>
