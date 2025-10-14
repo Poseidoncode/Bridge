@@ -129,170 +129,370 @@
 </script>
 
 <main>
+  <div class="glow-effect"></div>
+
   <div class="header">
-    <h1>Gummy</h1>
+    <div class="logo-container">
+      <div class="logo-glow"></div>
+      <h1>
+        <span class="logo-icon">🍬</span>
+        <span class="logo-text">Gummy</span>
+      </h1>
+      <div class="subtitle">AI Translation Engine</div>
+    </div>
   </div>
-  <div class="setting-row">
-    <div>
-      <label for="translation-toggle">Translation</label>
-      <small style="display: block; color: #666; font-size: 11px;"
-        >Translate current page content</small
-      >
-      <select id="read-lang" bind:value={targetReadLang}>
-        <option value="en">English</option>
-        <option value="zh-Hant">繁體中文</option>
-        <option value="zh-CN">简体中文</option>
-        <option value="ja">日本語</option>
-        <option value="ko">한국어</option>
-        <option value="fr">Français</option>
-        <option value="de">Deutsch</option>
-        <option value="es">Español</option>
-        <option value="it">Italiano</option>
-        <option value="pt">Português</option>
-        <option value="ru">Русский</option>
-        <option value="ar">العربية</option>
-        <option value="hi">हिन्दी</option>
-        <option value="th">ไทย</option>
-        <option value="vi">Tiếng Việt</option>
-        <option value="id">Bahasa Indonesia</option>
-        <option value="ms">Bahasa Melayu</option>
+
+  <div class="feature-card">
+    <div class="card-header">
+      <div class="icon-wrapper">
+        <span class="icon">🌐</span>
+      </div>
+      <div class="card-title">
+        <label for="translation-toggle">即時翻譯</label>
+        <small>一鍵將網頁內容轉換為您的母語</small>
+      </div>
+      <label class="switch">
+        <input
+          type="checkbox"
+          id="translation-toggle"
+          bind:checked={currentPageTranslated}
+          onchange={handleToggleChange}
+        />
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="language-selector">
+      <div class="selector-label">
+        <span class="label-icon">📖</span>
+        <span>閱讀語言</span>
+      </div>
+      <select id="read-lang" bind:value={targetReadLang} class="modern-select">
+        <option value="en">🇬🇧 English</option>
+        <option value="zh-Hant">🇹🇼 繁體中文</option>
+        <option value="zh-CN">🇨🇳 简体中文</option>
+        <option value="ja">🇯🇵 日本語</option>
+        <option value="ko">🇰🇷 한국어</option>
+        <option value="fr">🇫🇷 Français</option>
+        <option value="de">🇩🇪 Deutsch</option>
+        <option value="es">🇪🇸 Español</option>
+        <option value="it">🇮🇹 Italiano</option>
+        <option value="pt">🇵🇹 Português</option>
+        <option value="ru">🇷🇺 Русский</option>
+        <option value="ar">🇸🇦 العربية</option>
+        <option value="hi">🇮🇳 हिन्दी</option>
+        <option value="th">🇹🇭 ไทย</option>
+        <option value="vi">🇻🇳 Tiếng Việt</option>
+        <option value="id">🇮🇩 Bahasa Indonesia</option>
+        <option value="ms">🇲🇾 Bahasa Melayu</option>
       </select>
     </div>
-    <label class="switch">
-      <input
-        type="checkbox"
-        id="translation-toggle"
-        bind:checked={currentPageTranslated}
-        onchange={handleToggleChange}
-      />
-      <span class="slider"></span>
-    </label>
   </div>
-  <div class="setting-row">
-    <div>
-      <label for="write-lang">Writing Target Language</label>
-      <small style="display: block; color: #666; font-size: 11px;"
-        >Select the language to translate input text into</small
-      >
+
+  <div class="feature-card">
+    <div class="card-header">
+      <div class="icon-wrapper">
+        <span class="icon">✍️</span>
+      </div>
+      <div class="card-title">
+        <label for="write-lang">智能輸入</label>
+        <small>自動翻譯您的輸入文字為目標語言</small>
+      </div>
     </div>
-    <select id="write-lang" bind:value={targetWriteLang}>
-      <option value="en">English</option>
-      <option value="ja">日本語</option>
-      <option value="ko">한국어</option>
-      <option value="fr">Français</option>
-      <option value="de">Deutsch</option>
-      <option value="es">Español</option>
-      <option value="it">Italiano</option>
-      <option value="pt">Português</option>
-      <option value="ru">Русский</option>
-      <option value="ar">العربية</option>
-      <option value="hi">हिन्दी</option>
-      <option value="th">ไทย</option>
-      <option value="vi">Tiếng Việt</option>
-      <option value="id">Bahasa Indonesia</option>
-      <option value="ms">Bahasa Melayu</option>
-    </select>
+
+    <div class="language-selector">
+      <div class="selector-label">
+        <span class="label-icon">🎯</span>
+        <span>輸出語言</span>
+      </div>
+      <select
+        id="write-lang"
+        bind:value={targetWriteLang}
+        class="modern-select"
+      >
+        <option value="en">🇬🇧 English</option>
+        <option value="ja">🇯🇵 日本語</option>
+        <option value="ko">🇰🇷 한국어</option>
+        <option value="fr">🇫🇷 Français</option>
+        <option value="de">🇩🇪 Deutsch</option>
+        <option value="es">🇪🇸 Español</option>
+        <option value="it">🇮🇹 Italiano</option>
+        <option value="pt">🇵🇹 Português</option>
+        <option value="ru">🇷🇺 Русский</option>
+        <option value="ar">🇸🇦 العربية</option>
+        <option value="hi">🇮🇳 हिन्दी</option>
+        <option value="th">🇹🇭 ไทย</option>
+        <option value="vi">🇻🇳 Tiếng Việt</option>
+        <option value="id">🇮🇩 Bahasa Indonesia</option>
+        <option value="ms">🇲🇾 Bahasa Melayu</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="powered-by">
+    <span class="ai-badge">
+      <span class="badge-pulse"></span>
+      Powered by Google AI
+    </span>
   </div>
 </main>
 
 <style>
+  :global(body) {
+    margin: 0;
+    padding: 0;
+  }
+
   main {
-    width: 250px;
-    padding: 10px;
-    font-family: sans-serif;
+    width: 360px;
+    min-height: 480px;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+      "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+    position: relative;
+    overflow: hidden;
+    color: #fff;
   }
-  .setting-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 15px;
+
+  /* 動態光效背景 */
+  .glow-effect {
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(
+      circle,
+      rgba(255, 255, 255, 0.1) 0%,
+      transparent 70%
+    );
+    animation: rotate 20s linear infinite;
+    pointer-events: none;
   }
-  label {
-    font-size: 14px;
+
+  @keyframes rotate {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
   }
-  select,
-  input {
-    font-size: 14px;
-  }
-  .button-group {
-    display: flex;
-    gap: 8px;
-  }
-  .action-button {
-    padding: 6px 12px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    background: #f8f9fa;
-    color: #333;
-    cursor: pointer;
-    font-size: 12px;
-    transition: all 0.2s ease;
-  }
-  .action-button:hover:not(:disabled) {
-    background: #e9ecef;
-    border-color: #adb5bd;
-  }
-  .action-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    background: #e9ecef;
-    color: #6c757d;
-  }
-  .action-button.translate-btn:not(:disabled) {
-    background: #007bff;
-    color: white;
-    border-color: #007bff;
-  }
-  .action-button.translate-btn:not(:disabled):hover {
-    background: #0056b3;
-    border-color: #0056b3;
-  }
-  .action-button.revert-btn:not(:disabled) {
-    background: #dc3545;
-    color: white;
-    border-color: #dc3545;
-  }
-  .action-button.revert-btn:not(:disabled):hover {
-    background: #c82333;
-    border-color: #c82333;
-  }
+
+  /* Header 樣式 */
   .header {
+    position: relative;
+    padding: 28px 24px 20px;
+    text-align: center;
+    z-index: 1;
+  }
+
+  .logo-container {
+    position: relative;
+  }
+
+  .logo-glow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 120px;
+    height: 120px;
+    background: radial-gradient(
+      circle,
+      rgba(255, 255, 255, 0.3) 0%,
+      transparent 70%
+    );
+    border-radius: 50%;
+    animation: pulse 3s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%,
+    100% {
+      opacity: 0.5;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    50% {
+      opacity: 0.8;
+      transform: translate(-50%, -50%) scale(1.1);
+    }
+  }
+
+  .header h1 {
+    margin: 0;
+    font-size: 32px;
+    font-weight: 700;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #eee;
+    justify-content: center;
+    gap: 10px;
+    position: relative;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
   }
-  .status-indicator {
-    font-size: 12px;
-    padding: 4px 8px;
-    border-radius: 12px;
+
+  .logo-icon {
+    font-size: 36px;
+    animation: bounce 2s ease-in-out infinite;
+  }
+
+  @keyframes bounce {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-5px);
+    }
+  }
+
+  .logo-text {
+    background: linear-gradient(135deg, #fff 0%, #f0f0f0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .subtitle {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    opacity: 0.9;
+    margin-top: 4px;
     font-weight: 500;
+  }
+
+  /* Feature Card 樣式 */
+  .feature-card {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    padding: 18px;
+    margin: 0 16px 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
     transition: all 0.3s ease;
+    position: relative;
+    z-index: 1;
   }
-  .status-indicator:not(.translated) {
-    background: #fff3cd;
-    color: #856404;
-    border: 1px solid #ffeaa7;
+
+  .feature-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+    background: rgba(255, 255, 255, 0.2);
   }
-  .status-indicator.translated {
-    background: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
+
+  .card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 16px;
   }
-  /* Switch Toggle Styles */
+
+  .icon-wrapper {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.3),
+      rgba(255, 255, 255, 0.1)
+    );
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .card-title {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .card-title label {
+    display: block;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    cursor: pointer;
+  }
+
+  .card-title small {
+    display: block;
+    font-size: 11px;
+    opacity: 0.85;
+    line-height: 1.4;
+  }
+
+  /* Language Selector */
+  .language-selector {
+    margin-top: 12px;
+  }
+
+  .selector-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    margin-bottom: 8px;
+    opacity: 0.95;
+  }
+
+  .label-icon {
+    font-size: 14px;
+  }
+
+  .modern-select {
+    width: 100%;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+  }
+
+  .modern-select:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+  }
+
+  .modern-select:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.35);
+    border-color: rgba(255, 255, 255, 0.6);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+  }
+
+  .modern-select option {
+    background: #667eea;
+    color: #fff;
+    padding: 10px;
+  }
+
+  /* Switch Toggle - 升級版 */
   .switch {
     position: relative;
     display: inline-block;
-    width: 50px;
-    height: 24px;
+    width: 52px;
+    height: 28px;
+    flex-shrink: 0;
   }
+
   .switch input {
     opacity: 0;
     width: 0;
     height: 0;
   }
+
   .slider {
     position: absolute;
     cursor: pointer;
@@ -300,31 +500,93 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: #ccc;
+    background: rgba(255, 255, 255, 0.25);
     transition: 0.4s;
-    border-radius: 24px;
+    border-radius: 28px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
   }
+
   .slider:before {
     position: absolute;
     content: "";
-    height: 18px;
-    width: 18px;
+    height: 20px;
+    width: 20px;
     left: 3px;
-    bottom: 3px;
-    background-color: white;
+    bottom: 2px;
+    background: linear-gradient(135deg, #fff, #f0f0f0);
     transition: 0.4s;
     border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   }
+
   input:checked + .slider {
-    background-color: #007bff;
+    background: linear-gradient(135deg, #4ade80, #22c55e);
+    border-color: rgba(255, 255, 255, 0.5);
   }
+
   input:checked + .slider:before {
-    transform: translateX(26px);
+    transform: translateX(24px);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
   }
+
   .slider:hover {
-    box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
   }
+
   input:checked + .slider:hover {
-    box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+    box-shadow: 0 0 15px rgba(74, 222, 128, 0.5);
+  }
+
+  /* Powered By Badge */
+  .powered-by {
+    text-align: center;
+    padding: 16px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .ai-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    position: relative;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  }
+
+  .badge-pulse {
+    width: 8px;
+    height: 8px;
+    background: #4ade80;
+    border-radius: 50%;
+    animation: badge-pulse 2s ease-in-out infinite;
+    box-shadow: 0 0 10px #4ade80;
+  }
+
+  @keyframes badge-pulse {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.7;
+      transform: scale(1.2);
+    }
+  }
+
+  /* 響應式調整 */
+  @media (max-width: 400px) {
+    main {
+      width: 100%;
+    }
   }
 </style>
