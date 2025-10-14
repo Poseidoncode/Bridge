@@ -31,14 +31,14 @@ document.addEventListener('keydown', async (event) => {
       if (typeof Translator !== 'undefined') {
         // Check if translation is available for the language pair
         const availability = await Translator.availability({
-          sourceLanguage: 'auto', // Use 'auto' to detect source language automatically
+          sourceLanguage: 'zh-TW', // Use Traditional Chinese as source language
           targetLanguage: targetLang
         });
 
         if (availability === 'available') {
           // Create translator instance
           const translator = await Translator.create({
-            sourceLanguage: 'auto',
+            sourceLanguage: 'zh-TW',
             targetLanguage: targetLang
           });
 
@@ -66,7 +66,7 @@ document.addEventListener('keydown', async (event) => {
         }
       }
     } catch (error) {
-      console.error("TranslationGummy AI Writer Error:", error);
+      console.error("TranslationGummy Translator Error:", error);
     }
   }
 });
@@ -142,7 +142,7 @@ async function translateText(text: string, targetLang: string): Promise<string |
 
     // Check if translation is available for the language pair
     const availability = await Translator.availability({
-      sourceLanguage: 'auto', // Use 'auto' to detect source language automatically
+      sourceLanguage: 'zh-TW', // Use Traditional Chinese as source language
       targetLanguage: targetLang
     });
 
@@ -153,7 +153,7 @@ async function translateText(text: string, targetLang: string): Promise<string |
 
     // Create translator instance
     const translator = await Translator.create({
-      sourceLanguage: 'auto',
+      sourceLanguage: 'zh-TW',
       targetLanguage: targetLang
     });
 
@@ -166,15 +166,8 @@ async function translateText(text: string, targetLang: string): Promise<string |
   }
 }
 
-// Chrome AI API type declarations (experimental)
+// Translator API type declarations
 declare global {
-  namespace chrome {
-    namespace ai {
-      function canCreateWriter(): Promise<'yes' | 'no'>;
-      function createWriter(): Promise<Writer>;
-    }
-  }
-
   // Translator API (global scope)
   var Translator: {
     availability(options: {
@@ -192,18 +185,4 @@ declare global {
     translate(text: string): Promise<string>;
     translateStreaming(text: string): AsyncIterable<string>;
   }
-
-  // Legacy Chrome AI API (for backward compatibility)
-  namespace chrome.ai {
-    function canCreateTextTranslator(): Promise<'yes' | 'no'>;
-    function createTextTranslator(): Promise<TextTranslator>;
-  }
-}
-
-interface TextTranslator {
-  translate(text: string, targetLang: string): Promise<{ translatedText: string }>;
-}
-
-interface Writer {
-  prompt(prompt: string): AsyncIterable<string>;
 }
