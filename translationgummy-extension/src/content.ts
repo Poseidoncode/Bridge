@@ -116,13 +116,26 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     // Return current page translation status
     const translatedElements = document.querySelectorAll('.translationgummy-translated');
     const translationWrappers = document.querySelectorAll('.translationgummy-translation-wrapper');
+    const allElements = document.querySelectorAll('*');
+
+    // More detailed debugging
+    let translatedInfo: string[] = [];
+    translatedElements.forEach((el, index) => {
+      translatedInfo.push(`${el.tagName}: "${el.textContent?.substring(0, 30)}..."`);
+    });
 
     console.log(`Status check: ${translatedElements.length} translated elements, ${translationWrappers.length} translation wrappers found`);
+    console.log('Translated elements:', translatedInfo);
+    console.log('Total elements on page:', allElements.length);
 
     sendResponse({
       isTranslated: translatedElements.length > 0,
       translatedCount: translatedElements.length,
-      wrapperCount: translationWrappers.length
+      wrapperCount: translationWrappers.length,
+      debugInfo: {
+        translatedElements: translatedInfo,
+        totalElements: allElements.length
+      }
     });
     return true; // Keep message channel open for async response
   }
