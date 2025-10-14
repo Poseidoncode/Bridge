@@ -102,10 +102,29 @@ document.addEventListener('keydown', async (event) => {
 });
 
 chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+  console.log('Content script received message:', message.action, 'from', sender);
+
   if (message.action === "translatePage") {
+    console.log('Starting page translation...');
     await translatePage();
+    console.log('Page translation completed');
   } else if (message.action === "revertPage") {
+    console.log('Starting page revert...');
     revertPage();
+    console.log('Page revert completed');
+  } else if (message.action === "getPageTranslationStatus") {
+    // Return current page translation status
+    const translatedElements = document.querySelectorAll('.translationgummy-translated');
+    const translationWrappers = document.querySelectorAll('.translationgummy-translation-wrapper');
+
+    console.log(`Status check: ${translatedElements.length} translated elements, ${translationWrappers.length} translation wrappers found`);
+
+    sendResponse({
+      isTranslated: translatedElements.length > 0,
+      translatedCount: translatedElements.length,
+      wrapperCount: translationWrappers.length
+    });
+    return true; // Keep message channel open for async response
   }
 });
 
@@ -136,6 +155,10 @@ async function translatePage() {
     const originalNodes = [];
 
     for (const node of nodes) {
+      // Skip nodes that are already translated or already contain our translation wrapper
+      if ((node as Element).classList.contains('translationgummy-translated')) continue;
+      if ((node as Element).querySelector('.translationgummy-translation-wrapper')) continue;
+
       if (node.textContent && node.textContent.trim().length > 10) { // Only translate texts with sufficient length
         originalNodes.push(node);
         translationPromises.push(translateText(node.textContent, targetLang));
@@ -143,6 +166,8 @@ async function translatePage() {
     }
 
     const translatedTexts = await Promise.allSettled(translationPromises);
+
+    console.log(`Translation completed: ${originalNodes.length} nodes processed, ${translatedTexts.filter(t => t.status === 'fulfilled').length} successful translations`);
 
     originalNodes.forEach((node, index) => {
       const result = translatedTexts[index];
@@ -157,7 +182,6 @@ async function translatePage() {
 
           // Create a line break element and translation text
           const lineBreak = document.createElement('br');
-          // const lineBreak2 = document.createElement('br');
 
           // Create outer wrapper for the translation
           const translationWrapper = document.createElement('span');
@@ -178,11 +202,14 @@ async function translatePage() {
 
           // Append line breaks and translation wrapper to the node
           node.appendChild(lineBreak);
-          // node.appendChild(lineBreak2);
           node.appendChild(translationWrapper);
+
+          console.log(`Translation attached to node: ${node.tagName} - "${node.textContent?.substring(0, 50)}..."`);
         } catch (error) {
           console.error('Error modifying node:', error);
         }
+      } else {
+        console.warn(`Translation failed for node ${index}:`, result.status === 'rejected' ? result.reason : 'No result');
       }
     });
 
