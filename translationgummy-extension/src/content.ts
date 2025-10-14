@@ -171,6 +171,32 @@ document.addEventListener('keydown', async (event) => {
   }
 });
 
+// Listen for storage changes to auto-update translations when language settings change
+chrome.storage.onChanged.addListener(async (changes, namespace) => {
+  if (namespace === 'sync') {
+    const readLangChanged = changes.targetReadLang && changes.targetReadLang.newValue !== changes.targetReadLang.oldValue;
+    const writeLangChanged = changes.targetWriteLang && changes.targetWriteLang.newValue !== changes.targetWriteLang.oldValue;
+
+    if (readLangChanged || writeLangChanged) {
+      console.log('Language settings changed, checking if page needs re-translation...');
+
+      // Check if page is currently translated
+      const translatedElements = document.querySelectorAll('.translationgummy-translated');
+      if (translatedElements.length > 0) {
+        console.log('Page is translated, reverting and re-translating with new language settings...');
+
+        // First revert the page to get original content back
+        revertPage();
+
+        // Then translate with new language settings
+        setTimeout(async () => {
+          await translatePage();
+        }, 100); // Small delay to ensure DOM is updated
+      }
+    }
+  }
+});
+
 chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   console.log('Content script received message:', message.action, 'from', sender);
 
