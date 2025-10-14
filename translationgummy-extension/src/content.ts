@@ -163,68 +163,97 @@ async function translatePage() {
     `;
     document.body.appendChild(loadingDiv);
 
-    const nodes = document.querySelectorAll('p, h1, h2, h3, li, blockquote');
-    const translationPromises = [];
-    const originalNodes = [];
+    const nodes = document.querySelectorAll<HTMLElement>('p, h1, h2, h3, li, blockquote');
+
+    type TranslationTask = {
+      element: HTMLElement;
+      mode: 'block' | 'inline';
+      originalText: string;
+    };
+
+    const tasks: TranslationTask[] = [];
 
     for (const node of nodes) {
       // Skip nodes that are already translated or already contain our translation wrapper
-      if ((node as Element).classList.contains('translationgummy-translated')) continue;
-      if ((node as Element).querySelector('.translationgummy-translation-wrapper')) continue;
+      if (node.classList.contains('translationgummy-translated')) continue;
+      if (node.querySelector(':scope > .translationgummy-translation-wrapper')) continue;
 
-      if (node.textContent && node.textContent.trim().length > 10) { // Only translate texts with sufficient length
-        originalNodes.push(node);
-        translationPromises.push(translateText(node.textContent, targetLang));
+      const inlineTargets = getInlineTranslationTargets(node);
+      if (inlineTargets.length > 0) {
+        inlineTargets.forEach(target => {
+          if (target.classList.contains('translationgummy-inline-translated')) {
+            return;
+          }
+
+          const inlineText = getInlineOriginalText(target);
+          if (!inlineText) {
+            return;
+          }
+
+          tasks.push({
+            element: target,
+            mode: 'inline',
+            originalText: inlineText
+          });
+        });
+        // Avoid translating the entire list item when inline targets were discovered
+        continue;
       }
+
+      if (node.tagName === 'LI' && isNavigationContext(node)) {
+        // Complex navigation list-items get handled via inline targets or skipped to avoid layout breaks
+        continue;
+      }
+
+      const textContent = node.textContent?.trim();
+      if (!textContent) continue;
+      if (textContent.length <= 10) continue; // Only translate sufficiently long block texts
+
+      tasks.push({
+        element: node,
+        mode: 'block',
+        originalText: textContent
+      });
     }
 
-    const translatedTexts = await Promise.allSettled(translationPromises);
+    const translationResults = await Promise.allSettled(
+      tasks.map(task => translateText(task.originalText, targetLang))
+    );
 
-    console.log(`Translation completed: ${originalNodes.length} nodes processed, ${translatedTexts.filter(t => t.status === 'fulfilled').length} successful translations`);
+    let successCount = 0;
 
-    originalNodes.forEach((node, index) => {
-      const result = translatedTexts[index];
+    translationResults.forEach((result, index) => {
+      const task = tasks[index];
+      if (!task) {
+        return;
+      }
+
       if (result.status === 'fulfilled' && result.value) {
-        try {
-          // Instead of creating a container, modify the original node directly
-          // Add translation class and data attribute to mark it as translated
-          node.classList.add('translationgummy-translated');
-
-          // Store original text for potential reversion
-          (node as any).dataset.translationgummyOriginal = node.textContent || '';
-
-          // Create a line break element and translation text
-          const lineBreak = document.createElement('br');
-
-          // Create outer wrapper for the translation
-          const translationWrapper = document.createElement('span');
-          translationWrapper.className = 'translationgummy-translation-wrapper';
-
-          // Create inner <font> element to hold the translation content
-          const translationContentFont = document.createElement('font');
-          translationContentFont.className = 'translationgummy-translation-content';
-
-          // Create translation text node
-          const translationTextNode = document.createTextNode(result.value);
-
-          // Append translation text to inner font element
-          translationContentFont.appendChild(translationTextNode);
-
-          // Put the inner font into the wrapper and append to the node
-          translationWrapper.appendChild(translationContentFont);
-
-          // Append line breaks and translation wrapper to the node
-          node.appendChild(lineBreak);
-          node.appendChild(translationWrapper);
-
-          console.log(`Translation attached to node: ${node.tagName} - "${node.textContent?.substring(0, 50)}..."`);
-        } catch (error) {
-          console.error('Error modifying node:', error);
+        if (task.mode === 'inline' && result.value.startsWith('[')) {
+          console.warn('Skipping inline translation due to fallback result:', result.value);
+          return;
         }
+
+        if (task.mode === 'inline') {
+          applyInlineTranslation(task.element, result.value);
+        } else {
+          applyBlockTranslation(task.element, result.value);
+        }
+
+        successCount += 1;
       } else {
-        console.warn(`Translation failed for node ${index}:`, result.status === 'rejected' ? result.reason : 'No result');
+        console.warn(
+          `Translation failed for task ${index}:`,
+          result.status === 'rejected' ? result.reason : 'No result'
+        );
       }
     });
+
+    const inlineTaskCount = tasks.filter(task => task.mode === 'inline').length;
+    const blockTaskCount = tasks.length - inlineTaskCount;
+    console.log(
+      `Translation completed: ${tasks.length} tasks processed (block: ${blockTaskCount}, inline: ${inlineTaskCount}), ${successCount} successful translations`
+    );
 
     // Remove loading indicator
     const loadingElement = document.getElementById('translationgummy-loading');
@@ -263,20 +292,196 @@ async function translatePage() {
   }
 }
 
+function isNavigationContext(element: Element): boolean {
+  return Boolean(
+    element.closest('nav, [role="navigation"], .top-bar, .navbar, .menu, .menu-bar, .dropdown, .mega-menu')
+  );
+}
+
+function getInlineTranslationTargets(node: HTMLElement): HTMLElement[] {
+  if (node.tagName !== 'LI') {
+    return [];
+  }
+
+  if (!isNavigationContext(node)) {
+    return [];
+  }
+
+  const targets: HTMLElement[] = [];
+  const directChildren = Array.from(node.children);
+
+  for (const child of directChildren) {
+    if (!(child instanceof HTMLElement)) {
+      continue;
+    }
+
+    if (child.matches('a, button')) {
+      if (hasDirectTextNode(child)) {
+        targets.push(child);
+      }
+      continue;
+    }
+
+    if (child.matches('span') && child.childElementCount === 0 && hasDirectTextNode(child)) {
+      targets.push(child);
+    }
+  }
+
+  return targets;
+}
+
+function hasDirectTextNode(element: HTMLElement): boolean {
+  return Array.from(element.childNodes).some(node => {
+    if (node.nodeType !== Node.TEXT_NODE) {
+      return false;
+    }
+    return Boolean(node.textContent && node.textContent.trim());
+  });
+}
+
+function applyInlineTranslation(element: HTMLElement, translatedText: string): void {
+  if (!element.dataset.translationgummyOriginalInline) {
+    element.dataset.translationgummyOriginalInline = getInlineOriginalText(element);
+  }
+
+  replaceTextPreservingChildren(element, translatedText);
+  element.classList.add('translationgummy-inline-translated');
+}
+
+function getInlineOriginalText(element: HTMLElement): string {
+  const directTextNode = Array.from(element.childNodes).find((node): node is Text => {
+    if (node.nodeType !== Node.TEXT_NODE) {
+      return false;
+    }
+    return Boolean(node.textContent && node.textContent.trim());
+  });
+
+  if (directTextNode?.textContent) {
+    return directTextNode.textContent.trim();
+  }
+
+  return element.textContent?.trim() ?? '';
+}
+
+function applyBlockTranslation(element: HTMLElement, translatedText: string): void {
+  element.classList.add('translationgummy-translated');
+
+  const existingWrapper = element.querySelector(':scope > .translationgummy-translation-wrapper');
+  if (existingWrapper) {
+    const translationContent = existingWrapper.querySelector('font.translationgummy-translation-content');
+    if (translationContent) {
+      translationContent.textContent = translatedText;
+    }
+    return;
+  }
+
+  if (!element.dataset.translationgummyOriginal) {
+    element.dataset.translationgummyOriginal = element.textContent || '';
+  }
+
+  if (shouldInsertLineBreak(element)) {
+    const lineBreak = document.createElement('br');
+    lineBreak.dataset.translationgummyInjected = 'line-break';
+    element.appendChild(lineBreak);
+  }
+
+  const translationWrapper = document.createElement('span');
+  translationWrapper.className = 'translationgummy-translation-wrapper';
+  translationWrapper.dataset.translationgummyInjected = 'translation';
+
+  const translationContentFont = document.createElement('font');
+  translationContentFont.className = 'translationgummy-translation-content';
+  translationContentFont.textContent = translatedText;
+
+  translationWrapper.appendChild(translationContentFont);
+  element.appendChild(translationWrapper);
+
+  console.log(`Translation attached to node: ${element.tagName} - "${element.textContent?.substring(0, 50)}..."`);
+}
+
+function replaceTextPreservingChildren(element: HTMLElement, newText: string): void {
+  const textNodes = Array.from(element.childNodes).filter(
+    (node): node is Text => node.nodeType === Node.TEXT_NODE
+  );
+
+  let replaced = false;
+
+  for (const textNode of textNodes) {
+    const rawText = textNode.textContent ?? '';
+    const trimmed = rawText.trim();
+
+    if (!trimmed) {
+      continue;
+    }
+
+    if (!replaced) {
+      const leadingWhitespace = rawText.match(/^\s*/)?.[0] ?? '';
+      const trailingWhitespace = rawText.match(/\s*$/)?.[0] ?? '';
+      textNode.textContent = `${leadingWhitespace}${newText}${trailingWhitespace}`;
+      replaced = true;
+    } else {
+      textNode.textContent = '';
+    }
+  }
+
+  if (!replaced) {
+    element.insertBefore(document.createTextNode(newText), element.firstChild);
+  }
+}
+
+function shouldInsertLineBreak(node: HTMLElement): boolean {
+  try {
+    const display = window.getComputedStyle(node).display;
+    return display !== 'inline' && display !== 'inline-block';
+  } catch (error) {
+    console.warn('Unable to determine computed style for line break calculation:', error);
+    return true;
+  }
+}
+
 function revertPage() {
   try {
     // Find all translated elements and restore their original text
-    const translatedElements = document.querySelectorAll('.translationgummy-translated');
+    const translatedElements = document.querySelectorAll<HTMLElement>('.translationgummy-translated');
     translatedElements.forEach(element => {
       try {
-        const originalText = (element as any).dataset.translationgummyOriginal;
-        if (originalText !== undefined) {
-          element.textContent = originalText;
-          element.classList.remove('translationgummy-translated');
-          delete (element as any).dataset.translationgummyOriginal;
-        }
+        const wrappers = element.querySelectorAll(':scope > .translationgummy-translation-wrapper');
+        wrappers.forEach(wrapperNode => {
+          const wrapper = wrapperNode as HTMLElement;
+          const previousSibling = wrapper.previousSibling;
+          if (previousSibling && previousSibling.nodeType === Node.ELEMENT_NODE) {
+            const previousElement = previousSibling as HTMLElement;
+            if (
+              previousElement.dataset.translationgummyInjected === 'line-break' ||
+              previousElement.tagName === 'BR'
+            ) {
+              previousElement.remove();
+            }
+          }
+          wrapper.remove();
+        });
+
+        const injectedLineBreaks = element.querySelectorAll(':scope > [data-translationgummy-injected="line-break"]');
+        injectedLineBreaks.forEach(lineBreak => lineBreak.remove());
+
+        element.classList.remove('translationgummy-translated');
+        delete element.dataset.translationgummyOriginal;
       } catch (error) {
         console.error('Error reverting element:', error);
+      }
+    });
+
+    const inlineTranslatedElements = document.querySelectorAll<HTMLElement>('.translationgummy-inline-translated');
+    inlineTranslatedElements.forEach(element => {
+      try {
+        const originalText = element.dataset.translationgummyOriginalInline;
+        if (originalText !== undefined) {
+          replaceTextPreservingChildren(element, originalText);
+          delete element.dataset.translationgummyOriginalInline;
+        }
+        element.classList.remove('translationgummy-inline-translated');
+      } catch (error) {
+        console.error('Error reverting inline element:', error);
       }
     });
 
