@@ -237,10 +237,14 @@
     padding: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
       "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+    background: radial-gradient(circle at 20% 50%, #4285f4 0%, transparent 50%),
+      radial-gradient(circle at 80% 50%, #ea4335 0%, transparent 50%),
+      radial-gradient(circle at 40% 80%, #fbbc05 0%, transparent 50%),
+      radial-gradient(circle at 60% 20%, #34a853 0%, transparent 50%);
     position: relative;
     overflow: hidden;
     color: #fff;
+    border-radius: 20px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   }
