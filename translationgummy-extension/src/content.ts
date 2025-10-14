@@ -135,6 +135,10 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     console.log('Starting page revert...');
     revertPage();
     console.log('Page revert completed');
+  } else if (message.action === "updateExistingTranslations") {
+    console.log('Updating existing translations...');
+    await updateExistingTranslations();
+    console.log('Existing translations updated');
   } else if (message.action === "getPageTranslationStatus") {
     // Return current page translation status
     const translatedElements = document.querySelectorAll('.translationgummy-translated');
@@ -570,7 +574,7 @@ async function translateText(text: string, targetLang: string): Promise<string |
           targetLanguage: targetLang,
           monitor(m) {
             m.addEventListener('downloadprogress', async (e: ProgressEvent) => {
-              const progress = Math.round(e.loaded * 100);
+              const progress = Math.round((e.loaded / e.total) * 100);
               console.log(`Downloaded ${progress}% for ${targetLang}`);
 
               // When download is complete (100%), perform translation

@@ -7,24 +7,43 @@
   let currentPageTranslated = $state(false);
   let userIntendedState = $state(false); // Track user's intended state
 
+  // Debug: Track state changes
+  $effect(() => {
+    console.log(
+      `State changed - currentPageTranslated: ${currentPageTranslated}, userIntendedState: ${userIntendedState}`
+    );
+  });
+
   // On component mount, load settings from chrome.storage
   onMount(async () => {
+    console.log("Popup mounted, loading settings...");
+
     const syncResult = await chrome.storage.sync.get([
       "targetWriteLang",
       "targetReadLang",
     ]);
+    console.log("Sync storage result:", syncResult);
     targetWriteLang = syncResult.targetWriteLang ?? "en";
     targetReadLang = syncResult.targetReadLang ?? "zh-Hant";
 
     const localResult = await chrome.storage.local.get([
       "translationToggleState",
     ]);
+    console.log("Local storage result:", localResult);
+
     if (typeof localResult.translationToggleState === "boolean") {
       userIntendedState = localResult.translationToggleState;
       currentPageTranslated = localResult.translationToggleState;
+      console.log(
+        "Loaded toggle state from storage:",
+        localResult.translationToggleState
+      );
+    } else {
+      console.log("No toggle state found in storage, using default: false");
     }
 
     // Check current page translation status
+    console.log("Checking current page status...");
     await checkCurrentPageStatus();
   });
 
@@ -113,27 +132,87 @@
     }
   }
 
-  // Check current page translation status
+  // Handle language selector change
+  async function handleLanguageChange() {
+    // Only perform translation if the toggle is ON
+    console.log(
+      `currentPageTranslated: ${currentPageTranslated}, userIntendedState: ${userIntendedState}`
+    );
+    // Save the new language settings
+    if (currentPageTranslated && userIntendedState) {
+      console.log(
+        "Language changed while translation is ON, updating translations..."
+      );
+      try {
+        const tabs = await chrome.tabs.query({
+          active: true,
+          currentWindow: true,
+        });
+        if (tabs[0] && tabs[0].id) {
+          // Send message to content script to update existing translations
+          await chrome.tabs.sendMessage(tabs[0].id, {
+            action: "updateExistingTranslations",
+          });
+        }
+      } catch (error) {
+        console.error(
+          "Error updating translations after language change:",
+          error
+        );
+      }
+    } else {
+      console.log(
+        "Language changed while translation is OFF, no action needed"
+      );
+    }
+  }
+
+  // Check current page translation status (only for sync, don't override user intention)
   async function checkCurrentPageStatus() {
     try {
+      console.log("Getting current tab...");
       const tabs = await chrome.tabs.query({
         active: true,
         currentWindow: true,
       });
+      console.log("Current tabs:", tabs);
+
       if (tabs[0] && tabs[0].id) {
+        console.log(`Sending getPageTranslationStatus to tab ${tabs[0].id}`);
         const response = await chrome.tabs.sendMessage(tabs[0].id, {
           action: "getPageTranslationStatus",
         });
+        console.log("Received response:", response);
+
         if (response) {
-          currentPageTranslated = response.isTranslated;
-          userIntendedState = response.isTranslated;
-          await chrome.storage.local.set({
-            translationToggleState: response.isTranslated,
-          });
+          // Only update if user hasn't explicitly set a state yet
+          if (!userIntendedState) {
+            currentPageTranslated = response.isTranslated;
+            userIntendedState = response.isTranslated;
+            await chrome.storage.local.set({
+              translationToggleState: response.isTranslated,
+            });
+            console.log(
+              "Updated state from page status (no user intention):",
+              response.isTranslated
+            );
+          } else {
+            console.log(
+              "Keeping user intended state:",
+              userIntendedState,
+              "Page status:",
+              response.isTranslated
+            );
+          }
+        } else {
+          console.log("No response received from content script");
         }
+      } else {
+        console.error("No active tab found");
       }
     } catch (error) {
-      currentPageTranslated = userIntendedState;
+      console.error("Error checking page status:", error);
+      // Keep current state on error
     }
   }
 
@@ -207,7 +286,12 @@
         <span class="label-icon">📖</span>
         <span>Reading Language</span>
       </div>
-      <select id="read-lang" bind:value={targetReadLang} class="modern-select">
+      <select
+        id="read-lang"
+        bind:value={targetReadLang}
+        onchange={handleLanguageChange}
+        class="modern-select"
+      >
         <option value="en">🇬🇧 English</option>
         <option value="zh-Hant">🇹🇼 繁體中文</option>
         <option value="zh-CN">🇨🇳 简体中文</option>
@@ -249,6 +333,7 @@
       <select
         id="write-lang"
         bind:value={targetWriteLang}
+        onchange={handleLanguageChange}
         class="modern-select"
       >
         <option value="en">🇬🇧 English</option>
