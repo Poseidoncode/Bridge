@@ -9,7 +9,8 @@
   // On component mount, load settings from chrome.storage
   onMount(async () => {
     const result = await chrome.storage.sync.get(['readingEnabled', 'targetWriteLang', 'targetReadLang']);
-    readingEnabled = result.readingEnabled ?? false;
+    // Always default to false for checkbox state, regardless of saved setting
+    readingEnabled = false; // Force checkbox to be unchecked on popup open
     targetWriteLang = result.targetWriteLang ?? 'en';
     targetReadLang = result.targetReadLang ?? 'zh-TW';
   });
