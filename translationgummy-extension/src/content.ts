@@ -4,6 +4,21 @@
 console.log("TranslationGummy Content Script Loaded.");
 
 let activeElement: HTMLInputElement | HTMLTextAreaElement | null = null;
+let autoTranslateEnabled = false;
+let pendingFullTranslationTimer: number | null = null;
+let observerSetupTimer: number | null = null;
+let mutationObserver: MutationObserver | null = null;
+let translationQueue: Promise<void> = Promise.resolve();
+let currentTargetReadLang = 'en';
+let initialSyncPerformed = false;
+let mutationSuppressed = false;
+let mutationDeferred = false;
+
+type TranslatePageOptions = {
+  showIndicator?: boolean;
+  targetLang?: string;
+  skipPolling?: boolean;
+};
 
 // Listen for input focus events
 document.addEventListener('focusin', (event) => {
@@ -41,21 +56,145 @@ history.replaceState = function(...args) {
   handlePageNavigation();
 };
 
+function ensureMutationObserver() {
+  if (!autoTranslateEnabled) {
+    if (mutationObserver) {
+      mutationObserver.disconnect();
+      mutationObserver = null;
+    }
+    if (observerSetupTimer !== null) {
+      clearTimeout(observerSetupTimer);
+      observerSetupTimer = null;
+    }
+    return;
+  }
+  if (!document.body) {
+    if (observerSetupTimer === null) {
+      observerSetupTimer = window.setTimeout(() => {
+        observerSetupTimer = null;
+        ensureMutationObserver();
+      }, 100);
+    }
+    return;
+  }
+  if (mutationObserver) {
+    return;
+  }
+  mutationObserver = new MutationObserver(handleMutations);
+  mutationObserver.observe(document.body, {
+    childList: true,
+    subtree: true,
+    characterData: true,
+  });
+}
+
+function handleMutations(records: MutationRecord[]) {
+  if (!autoTranslateEnabled) {
+    return;
+  }
+  if (mutationSuppressed) {
+    mutationDeferred = true;
+    return;
+  }
+  for (const record of records) {
+    if (record.type === 'childList') {
+      for (const node of Array.from(record.addedNodes)) {
+        if (node instanceof HTMLElement) {
+          if (node.classList.contains('translationgummy-translation-wrapper')) {
+            continue;
+          }
+          if ((node as HTMLElement).dataset.translationgummyInjected) {
+            continue;
+          }
+          scheduleFullTranslation(600, {
+            showIndicator: false,
+            skipPolling: true,
+            targetLang: currentTargetReadLang,
+          });
+          return;
+        }
+        if (node instanceof Text) {
+          const parent = node.parentElement;
+          if (parent && (parent.classList.contains('translationgummy-translation-content') || parent.dataset.translationgummyInjected)) {
+            continue;
+          }
+          if (node.textContent && node.textContent.trim()) {
+            scheduleFullTranslation(600, {
+              showIndicator: false,
+              skipPolling: true,
+              targetLang: currentTargetReadLang,
+            });
+            return;
+          }
+        }
+      }
+    } else if (record.type === 'characterData') {
+      const parent = (record.target as CharacterData).parentElement;
+      if (parent && (parent.classList.contains('translationgummy-translation-content') || parent.dataset.translationgummyInjected)) {
+        continue;
+      }
+      scheduleFullTranslation(600, {
+        showIndicator: false,
+        skipPolling: true,
+        targetLang: currentTargetReadLang,
+      });
+      return;
+    }
+  }
+}
+
+function scheduleFullTranslation(delay: number, options: TranslatePageOptions = {}) {
+  if (!autoTranslateEnabled) {
+    return;
+  }
+  if (pendingFullTranslationTimer !== null) {
+    clearTimeout(pendingFullTranslationTimer);
+  }
+  pendingFullTranslationTimer = window.setTimeout(() => {
+    pendingFullTranslationTimer = null;
+    if (!autoTranslateEnabled) {
+      return;
+    }
+    translationQueue = translationQueue
+      .then(() => translatePage(options))
+      .catch(error => {
+        console.error('Scheduled translation failed:', error);
+      });
+  }, delay);
+}
+
+async function syncTabTranslationState(triggerFull: boolean, delay = 0) {
+  let enabled = false;
+  try {
+    const response = await chrome.runtime.sendMessage({ action: 'getTabTranslationState' });
+    enabled = Boolean(response?.enabled);
+  } catch (error) {
+    try {
+      const fallback = await chrome.storage.local.get(['translationToggleState']);
+      enabled = Boolean(fallback.translationToggleState);
+    } catch (storageError) {
+      enabled = false;
+    }
+  }
+  autoTranslateEnabled = enabled;
+  ensureMutationObserver();
+  if (triggerFull && enabled) {
+    scheduleFullTranslation(delay, {
+      showIndicator: true,
+    });
+  }
+  if (!initialSyncPerformed) {
+    initialSyncPerformed = true;
+  }
+}
+
+void syncTabTranslationState(false);
+
 // Function to handle page navigation
 async function handlePageNavigation() {
   try {
-    // Clear any existing translations on the page
     revertPage();
-
-    // Reset translation state in storage
-    await chrome.storage.local.set({ translationToggleState: false });
-    try {
-      await chrome.runtime.sendMessage({ action: "resetTranslationStateForTab" });
-    } catch (error) {
-      console.error("Error notifying background about navigation:", error);
-    }
-
-    console.log('Translation state reset due to page navigation');
+    await syncTabTranslationState(true, 400);
   } catch (error) {
     console.error('Error handling page navigation:', error);
   }
@@ -246,6 +385,10 @@ chrome.storage.onChanged.addListener(async (changes, namespace) => {
     const readLangChanged = changes.targetReadLang && changes.targetReadLang.newValue !== changes.targetReadLang.oldValue;
     const writeLangChanged = changes.targetWriteLang && changes.targetWriteLang.newValue !== changes.targetWriteLang.oldValue;
 
+    if (changes.targetReadLang && typeof changes.targetReadLang.newValue === 'string') {
+      currentTargetReadLang = changes.targetReadLang.newValue;
+    }
+
     if (readLangChanged || writeLangChanged) {
       console.log('Language settings changed, reverting and re-translating...');
 
@@ -263,6 +406,10 @@ chrome.storage.onChanged.addListener(async (changes, namespace) => {
         }, 100);
       }
     }
+  } else if (namespace === 'local') {
+    if (changes.translationToggleStateByTab || changes.translationToggleState) {
+      await syncTabTranslationState(false);
+    }
   }
 });
 
@@ -270,17 +417,37 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   console.log('Content script received message:', message.action, 'from', sender);
 
   if (message.action === "translatePage") {
-    console.log('Starting page translation...');
-    await translatePage();
-    console.log('Page translation completed');
+    await syncTabTranslationState(false);
+    translationQueue = translationQueue
+      .then(async () => {
+        console.log('Starting page translation...');
+        await translatePage();
+        console.log('Page translation completed');
+      })
+      .catch(error => {
+        console.error('Queued translation failed:', error);
+      });
   } else if (message.action === "revertPage") {
-    console.log('Starting page revert...');
-    revertPage();
-    console.log('Page revert completed');
+    await syncTabTranslationState(false);
+    translationQueue = translationQueue
+      .then(() => {
+        console.log('Starting page revert...');
+        revertPage();
+        console.log('Page revert completed');
+      })
+      .catch(error => {
+        console.error('Queued revert failed:', error);
+      });
   } else if (message.action === "updateExistingTranslations") {
-    console.log('Updating existing translations...');
-    await updateExistingTranslations();
-    console.log('Existing translations updated');
+    translationQueue = translationQueue
+      .then(async () => {
+        console.log('Updating existing translations...');
+        await updateExistingTranslations();
+        console.log('Existing translations updated');
+      })
+      .catch(error => {
+        console.error('Queued translation update failed:', error);
+      });
   } else if (message.action === "resetTranslationState") {
     console.log('Resetting translation state from popup');
     // This message is sent from content script to itself, no action needed
@@ -315,16 +482,30 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   }
 });
 
-async function translatePage() {
+async function translatePage(options: TranslatePageOptions = {}) {
+  mutationSuppressed = true;
   try {
-    const settings = await chrome.storage.sync.get(['targetReadLang']);
-    const targetLang = settings.targetReadLang || 'en'; // Default to English for reading translation
+    const showIndicator = options.showIndicator !== false;
+    const skipPolling = options.skipPolling === true;
+    let targetLang: string;
+    if (options.targetLang) {
+      targetLang = options.targetLang;
+    } else {
+      const settings = await chrome.storage.sync.get(['targetReadLang']);
+      targetLang = settings.targetReadLang || 'en';
+    }
+    currentTargetReadLang = targetLang;
 
-    // Show loading indicator
-    const loadingDiv = document.createElement('div');
-    loadingDiv.id = 'translationgummy-loading';
-    loadingDiv.textContent = 'Translating...';
-    loadingDiv.style.cssText = `
+    let loadingDiv: HTMLElement | null = null;
+    if (showIndicator) {
+      loadingDiv = document.getElementById('translationgummy-loading');
+      if (loadingDiv) {
+        loadingDiv.textContent = 'Translating...';
+      } else {
+        loadingDiv = document.createElement('div');
+        loadingDiv.id = 'translationgummy-loading';
+        loadingDiv.textContent = 'Translating...';
+        loadingDiv.style.cssText = `
       position: fixed;
       top: 20px;
       right: 20px;
@@ -335,10 +516,13 @@ async function translatePage() {
       z-index: 10000;
       font-family: Arial, sans-serif;
     `;
-    document.body.appendChild(loadingDiv);
+        document.body.appendChild(loadingDiv);
+      }
+    }
 
-    // Start polling for page translation completion
-    pollForPageTranslationCompletion(targetLang);
+    if (showIndicator && !skipPolling) {
+      pollForPageTranslationCompletion(targetLang);
+    }
 
     const nodes = document.querySelectorAll<HTMLElement>('p, h1, h2, h3, li, blockquote');
 
@@ -351,7 +535,6 @@ async function translatePage() {
     const tasks: TranslationTask[] = [];
 
     for (const node of nodes) {
-      // Skip nodes that are already translated or already contain our translation wrapper
       if (node.classList.contains('translationgummy-translated')) continue;
       if (node.querySelector(':scope > .translationgummy-translation-wrapper')) continue;
 
@@ -373,18 +556,16 @@ async function translatePage() {
             originalText: inlineText
           });
         });
-        // Avoid translating the entire list item when inline targets were discovered
         continue;
       }
 
       if (node.tagName === 'LI' && isNavigationContext(node)) {
-        // Complex navigation list-items get handled via inline targets or skipped to avoid layout breaks
         continue;
       }
 
       const textContent = node.textContent?.trim();
       if (!textContent) continue;
-      if (textContent.length <= 10) continue; // Only translate sufficiently long block texts
+      if (textContent.length <= 10) continue;
 
       tasks.push({
         element: node,
@@ -438,28 +619,29 @@ async function translatePage() {
       `Translation completed: ${tasks.length} tasks processed (block: ${blockTaskCount}, inline: ${inlineTaskCount}), ${successCount} successful translations`
     );
 
-    const loadingElement = document.getElementById('translationgummy-loading');
-    if (loadingElement) {
-      if (downloadPending) {
-        loadingElement.textContent = 'Downloading translation model...';
-      } else {
-        loadingElement.remove();
+    if (showIndicator) {
+      const loadingElement = document.getElementById('translationgummy-loading');
+      if (loadingElement) {
+        if (downloadPending) {
+          loadingElement.textContent = 'Downloading translation model...';
+        } else {
+          loadingElement.remove();
+        }
       }
     }
 
   } catch (error) {
     console.error('Error in translatePage:', error);
 
-    // Remove loading indicator on error
-    const loadingElement = document.getElementById('translationgummy-loading');
-    if (loadingElement) {
-      loadingElement.remove();
-    }
+    if (options.showIndicator !== false) {
+      const loadingElement = document.getElementById('translationgummy-loading');
+      if (loadingElement) {
+        loadingElement.remove();
+      }
 
-    // Show error message briefly
-    const errorDiv = document.createElement('div');
-    errorDiv.textContent = 'Translation failed, please try again later';
-    errorDiv.style.cssText = `
+      const errorDiv = document.createElement('div');
+      errorDiv.textContent = 'Translation failed, please try again later';
+      errorDiv.style.cssText = `
       position: fixed;
       top: 20px;
       right: 20px;
@@ -470,11 +652,24 @@ async function translatePage() {
       z-index: 10000;
       font-family: Arial, sans-serif;
     `;
-    document.body.appendChild(errorDiv);
+      document.body.appendChild(errorDiv);
 
-    setTimeout(() => {
-      errorDiv.remove();
-    }, 3000);
+      setTimeout(() => {
+        errorDiv.remove();
+      }, 3000);
+    }
+  } finally {
+    mutationSuppressed = false;
+    if (mutationDeferred) {
+      mutationDeferred = false;
+      if (autoTranslateEnabled) {
+        scheduleFullTranslation(200, {
+          showIndicator: false,
+          skipPolling: true,
+          targetLang: currentTargetReadLang,
+        });
+      }
+    }
   }
 }
 

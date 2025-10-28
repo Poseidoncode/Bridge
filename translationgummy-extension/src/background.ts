@@ -33,6 +33,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 		})();
 
 		return true;
+	} else if (message?.action === "getTabTranslationState") {
+		const tabId = sender.tab?.id;
+		if (tabId === undefined || tabId === null) {
+			sendResponse({ success: false, enabled: false });
+			return false;
+		}
+
+		(async () => {
+			try {
+				const result = await chrome.storage.local.get([
+					"translationToggleStateByTab",
+				]);
+				const currentMap: Record<string, boolean> =
+					result.translationToggleStateByTab ?? {};
+				const enabled = Boolean(currentMap[String(tabId)]);
+				sendResponse({ success: true, enabled });
+			} catch (error) {
+				console.error("Error reading tab translation state:", error);
+				sendResponse({ success: false, enabled: false });
+			}
+		})();
+
+		return true;
 	}
 	return undefined;
 });
