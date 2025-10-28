@@ -49,11 +49,10 @@ async function handlePageNavigation() {
 
     // Reset translation state in storage
     await chrome.storage.local.set({ translationToggleState: false });
-
-    // Notify popup to reset switch state
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tabs[0] && tabs[0].id) {
-      await chrome.tabs.sendMessage(tabs[0].id, { action: "resetTranslationState" });
+    try {
+      await chrome.runtime.sendMessage({ action: "resetTranslationStateForTab" });
+    } catch (error) {
+      console.error("Error notifying background about navigation:", error);
     }
 
     console.log('Translation state reset due to page navigation');

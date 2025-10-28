@@ -5,7 +5,7 @@
   let targetWriteLang = $state("en");
   let targetReadLang = $state("zh-Hant");
   let currentPageTranslated = $state(false);
-  let userIntendedState = $state(false); // Track user's intended state
+  let userIntendedState = $state(false);
 
   // Debug: Track state changes
   $effect(() => {
@@ -14,38 +14,115 @@
     );
   });
 
+  // Storage listener for page navigation detection
+  let storageListener: ((changes: any, namespace: string) => void) | null =
+    null;
+  let currentTabId: number | null = null;
+  let tabToggleState: Record<string, boolean> = {};
+
   // On component mount, load settings from chrome.storage
-  onMount(async () => {
-    console.log("Popup mounted, loading settings...");
+  onMount(() => {
+    const initializeSettings = async () => {
+      console.log("Popup mounted, loading settings...");
 
-    const syncResult = await chrome.storage.sync.get([
-      "targetWriteLang",
-      "targetReadLang",
-    ]);
-    console.log("Sync storage result:", syncResult);
-    targetWriteLang = syncResult.targetWriteLang ?? "en";
-    targetReadLang = syncResult.targetReadLang ?? "zh-Hant";
+      // Get current tab info to detect tab changes
+      const tabs = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+      currentTabId = tabs[0]?.id ?? null;
+      console.log("Current tab ID:", currentTabId);
 
-    const localResult = await chrome.storage.local.get([
-      "translationToggleState",
-    ]);
-    console.log("Local storage result:", localResult);
+      const syncResult = await chrome.storage.sync.get([
+        "targetWriteLang",
+        "targetReadLang",
+      ]);
+      console.log("Sync storage result:", syncResult);
+      targetWriteLang = syncResult.targetWriteLang ?? "en";
+      targetReadLang = syncResult.targetReadLang ?? "zh-Hant";
 
-    if (typeof localResult.translationToggleState === "boolean") {
-      userIntendedState = localResult.translationToggleState;
-      currentPageTranslated = localResult.translationToggleState;
-      console.log(
-        "Loaded toggle state from storage:",
-        localResult.translationToggleState
-      );
-    } else {
-      console.log("No toggle state found in storage, using default: false");
-    }
+      const localResult = await chrome.storage.local.get([
+        "translationToggleStateByTab",
+      ]);
+      console.log("Local storage result:", localResult);
 
-    // Check current page translation status
-    console.log("Checking current page status...");
-    await checkCurrentPageStatus();
+      tabToggleState = localResult.translationToggleStateByTab ?? {};
+      const savedToggleState = getTabToggleState(currentTabId);
+      userIntendedState = savedToggleState;
+      currentPageTranslated = savedToggleState;
+
+      if (currentTabId !== null && !(String(currentTabId) in tabToggleState)) {
+        await setTabToggleState(currentTabId, false);
+        console.log("Initialized toggle state for new tab:", currentTabId);
+      } else {
+        console.log("Loaded toggle state from storage:", savedToggleState);
+      }
+
+      // Check current page translation status
+      console.log("Checking current page status...");
+      await checkCurrentPageStatus();
+
+      // Listen for storage changes to detect page navigation
+      storageListener = (changes: any, namespace: string) => {
+        if (namespace === "local" && changes.translationToggleStateByTab) {
+          const updatedMap = changes.translationToggleStateByTab.newValue ?? {};
+          tabToggleState = updatedMap;
+          if (currentTabId !== null) {
+            const newState = getTabToggleState(currentTabId);
+            console.log(
+              "Storage changed - translationToggleStateByTab for current tab:",
+              newState
+            );
+            if (!newState && (currentPageTranslated || userIntendedState)) {
+              console.log(
+                "Page navigation detected - resetting translation states"
+              );
+            }
+            currentPageTranslated = newState;
+            userIntendedState = newState;
+          } else {
+            console.log(
+              "Storage changed - translationToggleStateByTab updated without active tab"
+            );
+          }
+        }
+      };
+
+      chrome.storage.onChanged.addListener(storageListener);
+    };
+
+    initializeSettings();
+
+    return () => {
+      if (storageListener) {
+        chrome.storage.onChanged.removeListener(storageListener);
+      }
+    };
   });
+
+  function getTabToggleState(tabId: number | null): boolean {
+    if (tabId === null) {
+      return false;
+    }
+    const value = tabToggleState[String(tabId)];
+    return typeof value === "boolean" ? value : false;
+  }
+
+  async function setTabToggleState(tabId: number | null, value: boolean) {
+    if (tabId === null) {
+      return;
+    }
+    const key = String(tabId);
+    const nextState: Record<string, boolean> = {
+      ...tabToggleState,
+      [key]: value,
+    };
+    tabToggleState = nextState;
+    await chrome.storage.local.set({
+      translationToggleStateByTab: nextState,
+      translationToggleState: value,
+    });
+  }
 
   // Handle translate button click
   async function handleTranslate() {
@@ -101,17 +178,19 @@
         active: true,
         currentWindow: true,
       });
-      if (tabs[0] && tabs[0].id) {
+      const activeTabId = tabs[0]?.id ?? null;
+      if (activeTabId !== null) {
+        currentTabId = activeTabId;
         if (newState) {
           // If turning on, translate the page
           console.log("User wants to turn translation ON");
-          await chrome.tabs.sendMessage(tabs[0].id, {
+          await chrome.tabs.sendMessage(activeTabId, {
             action: "translatePage",
           });
         } else {
           // If turning off, revert the page
           console.log("User wants to turn translation OFF");
-          await chrome.tabs.sendMessage(tabs[0].id, { action: "revertPage" });
+          await chrome.tabs.sendMessage(activeTabId, { action: "revertPage" });
         }
 
         // Update UI to match user's intention immediately
@@ -124,7 +203,7 @@
         console.error("No active tab found");
       }
 
-      await chrome.storage.local.set({ translationToggleState: newState });
+      await setTabToggleState(activeTabId, newState);
     } catch (error) {
       console.error("Error in toggle change:", error);
       // Revert to actual state on error
@@ -176,6 +255,7 @@
         currentWindow: true,
       });
       console.log("Current tabs:", tabs);
+      currentTabId = tabs[0]?.id ?? null;
 
       if (tabs[0] && tabs[0].id) {
         console.log(`Sending getPageTranslationStatus to tab ${tabs[0].id}`);
@@ -189,9 +269,7 @@
           if (!userIntendedState) {
             currentPageTranslated = response.isTranslated;
             userIntendedState = response.isTranslated;
-            await chrome.storage.local.set({
-              translationToggleState: response.isTranslated,
-            });
+            await setTabToggleState(currentTabId, response.isTranslated);
             console.log(
               "Updated state from page status (no user intention):",
               response.isTranslated
@@ -268,7 +346,9 @@
       </div>
       <div class="card-title">
         <label for="translation-toggle">Real-time Translation</label>
-        <small>One-click webpage translation to your native language</small>
+        <small
+          >One-click webpage translation to your native language-*----{currentPageTranslated}</small
+        >
       </div>
       <label class="switch">
         <input
@@ -491,11 +571,6 @@
     text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
   }
 
-  .logo-icon {
-    font-size: 36px;
-    animation: bounce 2s ease-in-out infinite;
-  }
-
   @keyframes bounce {
     0%,
     100% {
@@ -694,52 +769,6 @@
 
   input:checked + .slider:hover {
     box-shadow: 0 0 15px rgba(74, 222, 128, 0.5);
-  }
-
-  /* Powered By Badge */
-  .powered-by {
-    text-align: center;
-    padding: 16px;
-    position: relative;
-    z-index: 1;
-  }
-
-  .ai-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
-    background: rgba(255, 255, 255, 0.2);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    position: relative;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-  }
-
-  .badge-pulse {
-    width: 8px;
-    height: 8px;
-    background: #4ade80;
-    border-radius: 50%;
-    animation: badge-pulse 2s ease-in-out infinite;
-    box-shadow: 0 0 10px #4ade80;
-  }
-
-  @keyframes badge-pulse {
-    0%,
-    100% {
-      opacity: 1;
-      transform: scale(1);
-    }
-    50% {
-      opacity: 0.7;
-      transform: scale(1.2);
-    }
   }
 
   /* 響應式調整 */
