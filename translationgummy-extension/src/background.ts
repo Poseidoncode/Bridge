@@ -59,3 +59,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 	}
 	return undefined;
 });
+
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
+	if (changeInfo.status !== "complete") {
+		return;
+	}
+	try {
+		const result = await chrome.storage.local.get(["translationToggleStateByTab"]);
+		const map: Record<string, boolean> = result.translationToggleStateByTab ?? {};
+		if (!map[String(tabId)]) {
+			return;
+		}
+		await chrome.tabs.sendMessage(tabId, { action: "translatePage" });
+	} catch (error) {
+		console.error("Error triggering translation on tab update:", error);
+	}
+});

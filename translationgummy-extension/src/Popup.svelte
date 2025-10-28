@@ -346,9 +346,7 @@
       </div>
       <div class="card-title">
         <label for="translation-toggle">Real-time Translation</label>
-        <small
-          >One-click webpage translation to your native language-*----{currentPageTranslated}</small
-        >
+        <small>One-click webpage translation to your native language</small>
       </div>
       <label class="switch">
         <input
