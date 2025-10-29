@@ -6,6 +6,7 @@
   let targetReadLang = $state("zh-Hant");
   let currentPageTranslated = $state(false);
   let userIntendedState = $state(false);
+  let settingsReady = $state(false);
 
   // Debug: Track state changes
   $effect(() => {
@@ -89,6 +90,7 @@
       };
 
       chrome.storage.onChanged.addListener(storageListener);
+      settingsReady = true;
     };
 
     initializeSettings();
@@ -295,6 +297,7 @@
   }
 
   $effect(() => {
+    if (!settingsReady) return;
     chrome.storage.sync.set({ targetWriteLang, targetReadLang });
   });
 </script>
