@@ -17,6 +17,9 @@ const smartInputSources = new WeakMap<HTMLElement, string>();
 const smartInputDebugElements = new WeakMap<HTMLElement, HTMLElement>();
 let suppressSmartInputTracking = false;
 let smartInputIdCounter = 0;
+let smartInputDisplayEnabled = false;
+let smartInputHintShown = false;
+let smartInputHintTimer: number | null = null;
 
 type TranslatePageOptions = {
   showIndicator?: boolean;
@@ -58,6 +61,10 @@ function setSmartInputElementValue(element: HTMLElement, text: string, triggerIn
 }
 
 function updateSmartInputDisplay(element: HTMLElement, text: string): void {
+  if (!smartInputDisplayEnabled) {
+    removeSmartInputDebug(element);
+    return;
+  }
   cleanupOrphanSmartInputDebugs();
   let debug = smartInputDebugElements.get(element) || null;
   if (debug && !debug.isConnected) {
@@ -90,6 +97,14 @@ function updateSmartInputDisplay(element: HTMLElement, text: string): void {
   debug.textContent = displayText ? `Smart Input source: ${displayText}` : 'Smart Input source: (empty)';
 }
 
+function removeSmartInputDebug(element: HTMLElement): void {
+  const debug = smartInputDebugElements.get(element);
+  if (debug) {
+    debug.remove();
+    smartInputDebugElements.delete(element);
+  }
+}
+
 function cleanupSmartInputDebugSiblings(element: HTMLElement, keep: HTMLElement | null): void {
   let sibling: Element | null = element.nextElementSibling;
   while (sibling) {
@@ -114,6 +129,52 @@ function cleanupOrphanSmartInputDebugs(): void {
       node.remove();
     }
   });
+}
+
+function enableSmartInputDisplay(element: HTMLElement, text: string): void {
+  if (!smartInputDisplayEnabled) {
+    smartInputDisplayEnabled = true;
+    showSmartInputHint();
+  }
+  updateSmartInputDisplay(element, text);
+}
+
+function resetSmartInputPresentation(): void {
+  smartInputDisplayEnabled = false;
+  smartInputHintShown = false;
+  if (smartInputHintTimer !== null) {
+    clearTimeout(smartInputHintTimer);
+    smartInputHintTimer = null;
+  }
+  const hint = document.getElementById('translationbridge-smart-input-hint');
+  if (hint) {
+    hint.remove();
+  }
+  const nodes = document.querySelectorAll<HTMLElement>('[data-translationbridge-injected="smart-input-debug"]');
+  nodes.forEach(node => node.remove());
+}
+
+function showSmartInputHint(): void {
+  if (smartInputHintShown) {
+    return;
+  }
+  smartInputHintShown = true;
+  const existing = document.getElementById('translationbridge-smart-input-hint');
+  if (existing) {
+    existing.remove();
+  }
+  const hint = document.createElement('div');
+  hint.id = 'translationbridge-smart-input-hint';
+  hint.textContent = 'Smart Input source enabled. Original text appears below inputs.';
+  hint.style.cssText = 'position:fixed;bottom:24px;right:24px;max-width:260px;background:#111827;color:#f9fafb;padding:12px 16px;border-radius:8px;box-shadow:0 8px 24px rgba(15,23,42,0.35);z-index:10001;font-family:Arial,sans-serif;font-size:13px;line-height:1.5;';
+  document.body.appendChild(hint);
+  if (smartInputHintTimer !== null) {
+    clearTimeout(smartInputHintTimer);
+  }
+  smartInputHintTimer = window.setTimeout(() => {
+    hint.remove();
+    smartInputHintTimer = null;
+  }, 3200);
 }
 
 // Listen for input focus events
@@ -312,6 +373,7 @@ void syncTabTranslationState(false);
 // Function to handle page navigation
 async function handlePageNavigation() {
   try {
+    resetSmartInputPresentation();
     revertPage();
     await syncTabTranslationState(true, 400);
   } catch (error) {
@@ -333,7 +395,7 @@ document.addEventListener('keydown', async (event) => {
       return;
     }
     smartInputSources.set(element, sourceText);
-    updateSmartInputDisplay(element, sourceText);
+    enableSmartInputDisplay(element, sourceText);
     const settings = await chrome.storage.sync.get(['targetWriteLang']);
     const targetLang = settings.targetWriteLang || 'en';
     let finalText: string | null = null;
