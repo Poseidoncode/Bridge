@@ -401,7 +401,7 @@
   <div class="feature-card">
     <div class="card-header">
       <div class="icon-wrapper">
-        <span class="icon">✍️</span>
+        <span class="icon">⚡</span>
       </div>
       <div class="card-title">
         <label for="write-lang">Smart Input</label>
@@ -412,8 +412,8 @@
 
     <div class="language-selector">
       <div class="selector-label">
-        <span class="label-icon">🎯</span>
-        <span style="transform: translateY(0.7px);">Output Language</span>
+        <span class="label-icon">🖌️</span>
+        <span style="transform: translateY(0.4px);">Output Language</span>
       </div>
       <select
         id="write-lang"
@@ -783,7 +783,7 @@
     width: 22px;
     left: 2px;
     bottom: 2px;
-    background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+    background: linear-gradient(135deg, #eaf0f7, #d4dde8);
     transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     border-radius: 50%;
     box-shadow:
