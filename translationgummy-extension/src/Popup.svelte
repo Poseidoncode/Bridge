@@ -705,28 +705,35 @@
   .modern-select {
     width: 100%;
     padding: 11px 16px;
-    background: rgba(15, 23, 42, 0.6);
+    background-color: rgba(15, 23, 42, 0.6);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23f1f5f9' d='M2 4l4 4 4-4z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
     border: 1px solid rgba(148, 163, 184, 0.2);
     border-radius: 10px;
     color: #f1f5f9;
     font-size: 13px;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition:
+      background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+      border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+      box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     backdrop-filter: blur(12px);
     letter-spacing: 0.2px;
-    padding-right: 20px;
+    padding-right: 32px;
+    appearance: none;
   }
 
   .modern-select:hover {
-    background: rgba(15, 23, 42, 0.7);
+    background-color: rgba(15, 23, 42, 0.7);
     border-color: rgba(99, 102, 241, 0.4);
     box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15);
   }
 
   .modern-select:focus {
     outline: none;
-    background: rgba(15, 23, 42, 0.8);
+    background-color: rgba(15, 23, 42, 0.8);
     border-color: rgba(99, 102, 241, 0.6);
     box-shadow:
       0 0 0 3px rgba(99, 102, 241, 0.15),
