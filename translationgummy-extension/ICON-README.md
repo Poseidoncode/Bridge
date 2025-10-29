@@ -57,7 +57,7 @@ choco install imagemagick
 ## 📁 文件结构
 
 ```
-translationgummy-extension/
+translationbridge-extension/
 ├── icon-source.svg          # 示例SVG图标
 ├── icon-source.png          # 转换后的PNG
 ├── generate-icons.js        # 图标生成脚本

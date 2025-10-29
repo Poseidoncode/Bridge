@@ -1,13 +1,13 @@
 
-.translationgummy-bilingual-container {
+.translationbridge-bilingual-container {
  
 }
 
-.translationgummy-original {
+.translationbridge-original {
 
 }
 
-.translationgummy-translation-wrapper {
+.translationbridge-translation-wrapper {
   margin: 4px 0 !important;
   display: inline-block;
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(139, 92, 246, 0.08));
@@ -19,13 +19,13 @@
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.translationgummy-translation-wrapper:hover {
+.translationbridge-translation-wrapper:hover {
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(139, 92, 246, 0.12));
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
   transform: translateX(2px);
 }
 
-font.translationgummy-translation-content {
+font.translationbridge-translation-content {
   font-family: inherit;
   word-break: break-word;
   user-select: text;
@@ -37,21 +37,21 @@ font.translationgummy-translation-content {
 }
 
 @media (prefers-color-scheme: dark) {
-  font.translationgummy-translation-content {
+  font.translationbridge-translation-content {
     color: #e2e8f0;
   }
   
-  .translationgummy-translation-wrapper {
+  .translationbridge-translation-wrapper {
     background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.15));
     border-left-color: rgba(99, 102, 241, 0.7);
   }
   
-  .translationgummy-translation-wrapper:hover {
+  .translationbridge-translation-wrapper:hover {
     background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2));
   }
 }
 
-.translationgummy-smart-input-debug {
+.translationbridge-smart-input-debug {
   font-size: 12px;
   color: #64748b;
   background: rgba(241, 245, 249, 0.6);
@@ -66,7 +66,7 @@ font.translationgummy-translation-content {
 }
 
 @media (prefers-color-scheme: dark) {
-  .translationgummy-smart-input-debug {
+  .translationbridge-smart-input-debug {
     color: #94a3b8;
     background: rgba(30, 41, 59, 0.7);
     border-color: rgba(148, 163, 184, 0.15);

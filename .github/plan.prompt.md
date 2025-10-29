@@ -1,8 +1,8 @@
-# TranslationGummy Chrome Extension Development Plan
+# Translationbridge Chrome Extension Development Plan
 
 ## 🎯 Project Overview
 
-**TranslationGummy** is a revolutionary Chrome extension that eliminates web language barriers through a **complete, secure, and seamless cross-language communication ecosystem**.
+**Translationbridge** is a revolutionary Chrome extension that eliminates web language barriers through a **complete, secure, and seamless cross-language communication ecosystem**.
 
 ### Core Features
 
@@ -119,8 +119,8 @@ Confirm the above documents are learned and ready to proceed with development.
 In your working directory, run the following shell commands to create a Vite project with Svelte 5 and TypeScript.
 
 ```bash
-npm create vite@latest translationgummy-extension -- --template svelte-ts
-cd translationgummy-extension
+npm create vite@latest translationbridge-extension -- --template svelte-ts
+cd translationbridge-extension
 npm install
 ```
 
@@ -204,7 +204,7 @@ Open `src/content.ts`. Implement core writing translation logic. This script inj
 
 ```typescript
 // File: src/content.ts
-console.log("TranslationGummy Content Script Loaded.");
+console.log("Translationbridge Content Script Loaded.");
 
 let activeElement: HTMLInputElement | HTMLTextAreaElement | null = null;
 
@@ -274,7 +274,7 @@ document.addEventListener("keydown", async (event) => {
         );
       }
     } catch (error) {
-      console.error("TranslationGummy Translator Error:", error);
+      console.error("Translationbridge Translator Error:", error);
     }
   }
 });
@@ -324,7 +324,7 @@ Rename `src/App.svelte` to `Popup.svelte`. This will be our popup UI. Replace it
 </script>
 
 <main>
-  <h1>TranslationGummy</h1>
+  <h1>Translationbridge</h1>
   <div class="setting-row">
     <label for="reading-toggle">Enable Immersive Reading</label>
     <input type="checkbox" id="reading-toggle" bind:checked={readingEnabled} on:change={handleToggleChange} />
@@ -393,7 +393,7 @@ Modify root `index.html` as the popup carrier.
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TranslationGummy Popup</title>
+    <title>Translationbridge Popup</title>
   </head>
   <body>
     <div id="app"></div>
@@ -444,15 +444,15 @@ async function translatePage() {
     if (translatedText) {
       // Create a container for bilingual display
       const container = document.createElement("div");
-      container.className = "translationgummy-bilingual-container";
+      container.className = "translationbridge-bilingual-container";
 
       // Clone the original node and wrap it
       const originalClone = node.cloneNode(true) as HTMLElement;
-      originalClone.className = "translationgummy-original";
+      originalClone.className = "translationbridge-original";
 
       // Create translated node
       const translatedNode = document.createElement("div");
-      translatedNode.className = "translationgummy-translation";
+      translatedNode.className = "translationbridge-translation";
       translatedNode.textContent = translatedText;
 
       // Append to container
@@ -467,10 +467,10 @@ async function translatePage() {
 
 function revertPage() {
   const containers = document.querySelectorAll(
-    ".translationgummy-bilingual-container"
+    ".translationbridge-bilingual-container"
   );
   containers.forEach((container) => {
-    const originalNode = container.querySelector(".translationgummy-original");
+    const originalNode = container.querySelector(".translationbridge-original");
     if (originalNode) {
       container.parentNode?.replaceChild(originalNode, container);
     }
@@ -523,21 +523,21 @@ Create `src/content.css` for styling injected translation text.
 
 ```css
 /* File: src/content.css */
-.translationgummy-bilingual-container {
+.translationbridge-bilingual-container {
   display: flex;
   gap: 1em;
   align-items: flex-start;
   margin-bottom: 1em;
 }
 
-.translationgummy-original {
+.translationbridge-original {
   flex: 1;
   padding: 0.5em;
   background-color: #f0f0f0;
   border-radius: 4px;
 }
 
-.translationgummy-translation {
+.translationbridge-translation {
   flex: 1;
   color: #555;
   font-size: 0.95em;
@@ -591,7 +591,7 @@ browser_action("click", "load-unpacked-button")
 # Select the dist folder when file dialog appears
 
 # 4. Verify extension is loaded
-browser_action("wait_for", "TranslationGummy")
+browser_action("wait_for", "Translationbridge")
 ```
 
 **Manual Testing Steps:**
@@ -602,7 +602,7 @@ browser_action("wait_for", "TranslationGummy")
    - Enable "Developer mode" in the top right
    - Click "Load unpacked"
    - Select the `dist` folder in your project
-   - "TranslationGummy" extension should now be installed
+   - "Translationbridge" extension should now be installed
 
 2. **Test Writing Mode**:
 
@@ -614,7 +614,7 @@ browser_action("wait_for", "TranslationGummy")
 3. **Test Reading Mode**:
 
    - Go to an English site (e.g., BBC News)
-   - Click the TranslationGummy icon in top right
+   - Click the Translationbridge icon in top right
    - Toggle "Enable Immersive Reading"
    - The page should display bilingual comparison format with original English text and translated Chinese text side by side
 
@@ -622,8 +622,8 @@ browser_action("wait_for", "TranslationGummy")
 
    ```bash
    # Test extension popup functionality
-   browser_action("click", "translationgummy-extension-icon")
-   browser_action("wait_for", "translationgummy-popup")
+   browser_action("click", "translationbridge-extension-icon")
+   browser_action("wait_for", "translationbridge-popup")
 
    # Test language switching
    browser_action("select_option", "write-lang-dropdown", "ja")

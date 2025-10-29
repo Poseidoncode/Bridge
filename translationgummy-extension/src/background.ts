@@ -1,5 +1,5 @@
 // File: src/background.ts
-console.log("TranslationGummy Background Script Loaded.");
+console.log("Translationbridge Background Script Loaded.");
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 	if (message?.action === "resetTranslationStateForTab") {
