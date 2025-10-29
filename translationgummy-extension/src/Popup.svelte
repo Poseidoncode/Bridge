@@ -340,13 +340,12 @@
   </div>
 
   <div class="feature-card">
-    <div class="card-header">
+    <div class="card-header" style="margin-bottom: 0px;">
       <div class="icon-wrapper">
         <span class="icon">🌐</span>
       </div>
       <div class="card-title">
         <label for="translation-toggle">Real-time Translation</label>
-        <small>One-click webpage translation to your native language</small>
       </div>
       <label class="switch">
         <input
@@ -357,6 +356,14 @@
         />
         <span class="slider"></span>
       </label>
+    </div>
+    <div class="card-header">
+      <div style="width: 20px;"></div>
+      <div>
+        <small style="color: #94A3B8;fonnt-size:11px"
+          >One-click webpage translation to your native language</small
+        >
+      </div>
     </div>
 
     <div class="language-selector">
@@ -617,7 +624,6 @@
   }
 
   .feature-card:hover {
-    transform: translateY(-2px);
     box-shadow:
       0 8px 32px rgba(99, 102, 241, 0.2),
       0 4px 16px rgba(0, 0, 0, 0.2),
@@ -709,6 +715,7 @@
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     backdrop-filter: blur(12px);
     letter-spacing: 0.2px;
+    padding-right: 20px;
   }
 
   .modern-select:hover {
@@ -739,6 +746,7 @@
     width: 52px;
     height: 28px;
     flex-shrink: 0;
+    transform: translateY(15px);
   }
 
   .switch input {
