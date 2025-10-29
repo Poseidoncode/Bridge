@@ -413,7 +413,7 @@
     <div class="language-selector">
       <div class="selector-label">
         <span class="label-icon">🎯</span>
-        <span>Output Language</span>
+        <span style="transform: translateY(0.7px);">Output Language</span>
       </div>
       <select
         id="write-lang"
@@ -753,7 +753,7 @@
     width: 52px;
     height: 28px;
     flex-shrink: 0;
-    transform: translateY(15px);
+    transform: translateY(10px);
   }
 
   .switch input {
@@ -792,11 +792,12 @@
   }
 
   input:checked + .slider {
-    background: linear-gradient(135deg, #22c55e, #16a34a);
-    border-color: rgba(34, 197, 94, 0.5);
+    background: linear-gradient(135deg, #10b981, #059669);
+    border-color: rgba(16, 185, 129, 0.6);
     box-shadow:
-      inset 0 2px 4px rgba(0, 0, 0, 0.1),
-      0 0 12px rgba(34, 197, 94, 0.4);
+      inset 0 2px 6px rgba(0, 0, 0, 0.12),
+      0 0 20px rgba(16, 185, 129, 0.3),
+      0 0 40px rgba(16, 185, 129, 0.15);
   }
 
   input:checked + .slider:before {
