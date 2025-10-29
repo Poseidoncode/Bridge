@@ -3,7 +3,7 @@
 ;(window as any).__TRANSLATIONGUMMY_CONTENT_SCRIPT_LOADED = true;
 console.log("TranslationGummy Content Script Loaded.");
 
-let activeElement: HTMLInputElement | HTMLTextAreaElement | null = null;
+let activeElement: HTMLElement | null = null;
 let autoTranslateEnabled = false;
 let pendingFullTranslationTimer: number | null = null;
 let observerSetupTimer: number | null = null;
@@ -13,6 +13,9 @@ let currentTargetReadLang = 'en';
 let initialSyncPerformed = false;
 let mutationSuppressed = false;
 let mutationDeferred = false;
+const smartInputSources = new WeakMap<HTMLElement, string>();
+const smartInputDebugElements = new WeakMap<HTMLElement, HTMLElement>();
+let suppressSmartInputTracking = false;
 
 type TranslatePageOptions = {
   showIndicator?: boolean;
@@ -20,12 +23,84 @@ type TranslatePageOptions = {
   skipPolling?: boolean;
 };
 
+function isSmartInputElement(target: EventTarget | null): target is HTMLElement {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+  return target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target.isContentEditable;
+}
+
+function readSmartInputText(element: HTMLElement): string {
+  if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
+    return element.value;
+  }
+  if (element.isContentEditable) {
+    return element.textContent || '';
+  }
+  return '';
+}
+
+function setSmartInputElementValue(element: HTMLElement, text: string, triggerInput = true): void {
+  suppressSmartInputTracking = true;
+  try {
+    if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
+      element.value = text;
+    } else if (element.isContentEditable) {
+      element.textContent = text;
+    }
+    if (triggerInput) {
+      element.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  } finally {
+    suppressSmartInputTracking = false;
+  }
+}
+
+function updateSmartInputDisplay(element: HTMLElement, text: string): void {
+  let debug = smartInputDebugElements.get(element);
+  if (!debug) {
+    debug = document.createElement('div');
+    debug.dataset.translationgummyInjected = 'smart-input-debug';
+    debug.className = 'translationgummy-smart-input-debug';
+    debug.style.cssText = 'margin-top:4px;font-size:12px;color:#555;font-family:Arial,sans-serif;';
+    if (element.parentElement) {
+      element.insertAdjacentElement('afterend', debug);
+    } else {
+      document.body.appendChild(debug);
+    }
+    smartInputDebugElements.set(element, debug);
+  }
+  const displayText = text.length > 500 ? `${text.slice(0, 500)}...` : text;
+  debug.textContent = displayText ? `Smart Input source: ${displayText}` : 'Smart Input source: (empty)';
+}
+
 // Listen for input focus events
 document.addEventListener('focusin', (event) => {
-  const target = event.target as HTMLElement;
-  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-    activeElement = target as HTMLInputElement | HTMLTextAreaElement;
+  const target = event.target;
+  if (isSmartInputElement(target)) {
+    activeElement = target;
+    const stored = smartInputSources.get(target);
+    const currentText = stored !== undefined ? stored : readSmartInputText(target);
+    if (stored === undefined) {
+      smartInputSources.set(target, currentText);
+    }
+    updateSmartInputDisplay(target, currentText);
+    return;
   }
+  activeElement = null;
+});
+
+document.addEventListener('input', (event) => {
+  if (suppressSmartInputTracking) {
+    return;
+  }
+  const target = event.target;
+  if (!isSmartInputElement(target)) {
+    return;
+  }
+  const text = readSmartInputText(target);
+  smartInputSources.set(target, text);
+  updateSmartInputDisplay(target, text);
 });
 
 // Listen for page navigation events
@@ -200,64 +275,47 @@ async function handlePageNavigation() {
   }
 }
 
-// Listen for keyboard events, trigger translation on Shift+S
 document.addEventListener('keydown', async (event) => {
-  if (event.key === 'S' && event.shiftKey && activeElement) {
-    event.preventDefault(); // Prevent default newline behavior
-
-    const originalText = activeElement.isContentEditable ? activeElement.textContent || '' : activeElement.value;
-    if (!originalText.trim()) return;
-
-    // Get target language from chrome.storage
+  if (event.key === 'S' && event.shiftKey && activeElement && isSmartInputElement(activeElement)) {
+    event.preventDefault();
+    const element = activeElement;
+    const stored = smartInputSources.get(element);
+    const currentText = readSmartInputText(element);
+    let sourceText = stored !== undefined ? stored : currentText;
+    if (!sourceText.trim()) {
+      sourceText = currentText;
+    }
+    if (!sourceText.trim()) {
+      return;
+    }
+    smartInputSources.set(element, sourceText);
+    updateSmartInputDisplay(element, sourceText);
     const settings = await chrome.storage.sync.get(['targetWriteLang']);
-    const targetLang = settings.targetWriteLang || 'en'; // Default to English if not set
+    const targetLang = settings.targetWriteLang || 'en';
     let finalText: string | null = null;
-
     try {
-      // Check if Translator API is available
       if (typeof Translator !== 'undefined') {
-        // For input translation, we need to detect the source language properly
-        // Since 'auto' doesn't work, we'll use a simple heuristic
-        const detectedSourceLang = detectLanguage(originalText);
-
-        // Check if translation is available for the language pair
+        const detectedSourceLang = detectLanguage(sourceText);
         const availability = await Translator.availability({
           sourceLanguage: detectedSourceLang,
           targetLanguage: targetLang
         });
-
         if (availability === 'available') {
-          // Create translator instance with explicit language specification
           const translator = await Translator.create({
             sourceLanguage: detectedSourceLang,
             targetLanguage: targetLang
           });
-
-          // Perform translation
-          const translatedText = await translator.translate(originalText);
-
-          // Post-process translation for Traditional Chinese if needed
+          const translatedText = await translator.translate(sourceText);
           if (targetLang === 'zh-Hant') {
-            // Ensure Traditional Chinese output by converting if necessary
             finalText = ensureTraditionalChinese(translatedText);
           } else {
             finalText = translatedText;
           }
         } else if (availability === 'downloadable') {
           console.log(`Translation model for ${targetLang} needs to be downloaded - starting download...`);
-
-          // Show immediate feedback to user
-          if (activeElement) {
-            const downloadingText = `[Translation model downloading for ${targetLang}, please wait...] ${originalText}`;
-            if (activeElement.isContentEditable) {
-              activeElement.textContent = downloadingText;
-            } else {
-              activeElement.value = downloadingText;
-            }
-          }
-
+          const downloadingText = `[Translation model downloading for ${targetLang}, please wait...] ${sourceText}`;
+          setSmartInputElementValue(element, downloadingText, false);
           try {
-            // Create translator instance to trigger actual download
             const translator = await Translator.create({
               sourceLanguage: detectedSourceLang,
               targetLanguage: targetLang,
@@ -265,116 +323,59 @@ document.addEventListener('keydown', async (event) => {
                 m.addEventListener('downloadprogress', async (e: ProgressEvent) => {
                   const progress = Math.round((e.loaded / e.total) * 100);
                   console.log(`Downloaded ${progress}% for ${targetLang}`);
-
-                  // Update UI with progress
-                  if (activeElement) {
-                    const progressText = `[Downloading ${progress}% for ${targetLang}] ${originalText}`;
-                    if (activeElement.isContentEditable) {
-                      activeElement.textContent = progressText;
-                    } else {
-                      activeElement.value = progressText;
-                    }
-                  }
-
-                  // When download is complete (100%), perform translation
+                  const progressText = `[Downloading ${progress}% for ${targetLang}] ${sourceText}`;
+                  setSmartInputElementValue(element, progressText, false);
                   if (progress >= 100) {
                     console.log(`Download completed for ${targetLang}, starting translation...`);
-
                     try {
-                      // Perform translation with the same translator instance
-                      const result = await translator.translate(originalText);
-
-                      console.log(`Translation completed for ${targetLang}: ${originalText} -> ${result}`);
-
-                      // Update UI with final translation
-                      if (activeElement) {
-                        if (activeElement.isContentEditable) {
-                          activeElement.textContent = result;
-                          activeElement.dispatchEvent(new Event('input', { bubbles: true }));
-                        } else {
-                          activeElement.value = result;
-                          activeElement.dispatchEvent(new Event('input', { bubbles: true }));
-                        }
-                      }
-
-                      return result;
+                      const result = await translator.translate(sourceText);
+                      console.log(`Translation completed for ${targetLang}: ${sourceText} -> ${result}`);
+                      setSmartInputElementValue(element, result);
                     } catch (translationError) {
                       console.error('Error during translation after download:', translationError);
-                      return `[Translation failed for ${targetLang}] ${originalText}`;
+                      setSmartInputElementValue(element, `[Translation failed for ${targetLang}] ${sourceText}`, false);
                     }
                   }
                 });
               },
             });
-
-            // Return message indicating download has started
-            return `[Translation model downloading for ${targetLang}, please wait...] ${originalText}`;
+            return `[Translation model downloading for ${targetLang}, please wait...] ${sourceText}`;
           } catch (downloadError: any) {
             console.error('Error starting model download:', downloadError);
-
-            // Check if this is the "user gesture required" error
-            if (downloadError.name === 'NotAllowedError' &&
-                downloadError.message.includes('user gesture')) {
+            if (downloadError.name === 'NotAllowedError' && downloadError.message.includes('user gesture')) {
               console.log('User gesture required for download, but download may still proceed in background');
-
-              // Wait a bit and check if download actually started despite the error
               await new Promise(resolve => setTimeout(resolve, 2000));
-
               try {
-                // Try to check availability again - if it's now 'downloading', the download started
                 const recheckAvailability = await Translator.availability({
                   sourceLanguage: detectedSourceLang,
                   targetLanguage: targetLang
                 });
-
                 if (recheckAvailability === 'downloadable') {
                   console.log('Download is actually proceeding despite initial error');
-                  return `[Translation model downloading for ${targetLang}, please wait...] ${originalText}`;
+                  return `[Translation model downloading for ${targetLang}, please wait...] ${sourceText}`;
                 }
               } catch (recheckError) {
                 console.log('Could not recheck availability:', recheckError);
               }
-
-              // If we can't confirm, still return downloading message since the error might be misleading
-              return `[Translation model downloading for ${targetLang}, please wait...] ${originalText}`;
+              return `[Translation model downloading for ${targetLang}, please wait...] ${sourceText}`;
             }
-
-            // For other types of errors, return failure message
-            return `[Download failed for ${targetLang}] ${originalText}`;
+            return `[Download failed for ${targetLang}] ${sourceText}`;
           }
         } else {
           console.warn(`Translation not available for target language: ${targetLang}`);
-          finalText = `[Translation temporarily unavailable: ${targetLang}] ${originalText}`;
+          finalText = `[Translation temporarily unavailable: ${targetLang}] ${sourceText}`;
         }
       } else {
-        // Fallback for browsers that don't support Translator API yet
         console.warn('Translator API not supported — using fallback translation for testing');
-        finalText = `[translated:${targetLang}] ${originalText}`;
+        finalText = `[translated:${targetLang}] ${sourceText}`;
       }
-
       if (finalText !== null) {
-        if (activeElement.isContentEditable) {
-          // Use textContent for contentEditable elements to avoid HTML parsing issues
-          activeElement.textContent = finalText;
-          // Trigger input event to ensure any listeners are notified
-          activeElement.dispatchEvent(new Event('input', { bubbles: true }));
-        } else {
-          activeElement.value = finalText;
-          // Trigger input event for regular input elements
-          activeElement.dispatchEvent(new Event('input', { bubbles: true }));
-        }
+        setSmartInputElementValue(element, finalText);
       }
     } catch (error) {
       console.error("TranslationGummy Translator Error:", error);
-      // Provide user feedback on error
-      if (activeElement) {
-        const errorText = `[Translation error] ${originalText}`;
-        if (activeElement.isContentEditable) {
-          activeElement.textContent = errorText;
-        } else {
-          activeElement.value = errorText;
-        }
-      }
+      const errorText = `[Translation error] ${sourceText}`;
+      setSmartInputElementValue(element, errorText, false);
     }
   }
 });
@@ -1345,14 +1346,11 @@ async function pollForTranslationCompletion(sourceLang: string, targetLang: stri
         }
 
         // Update the active element with the actual translation
-        if (activeElement) {
-          if (activeElement.isContentEditable) {
-            activeElement.textContent = finalText;
-            activeElement.dispatchEvent(new Event('input', { bubbles: true }));
-          } else {
-            activeElement.value = finalText;
-            activeElement.dispatchEvent(new Event('input', { bubbles: true }));
-          }
+        const targetElement = activeElement && isSmartInputElement(activeElement) ? activeElement : null;
+        if (targetElement) {
+          smartInputSources.set(targetElement, originalText);
+          updateSmartInputDisplay(targetElement, originalText);
+          setSmartInputElementValue(targetElement, finalText);
         }
 
         console.log(`Translation completed for ${targetLang}: ${originalText} -> ${finalText}`);
@@ -1361,26 +1359,22 @@ async function pollForTranslationCompletion(sourceLang: string, targetLang: stri
         clearInterval(pollInterval);
 
         // Update UI to show error
-        if (activeElement) {
-          const errorText = `[Translation unavailable for ${targetLang}] ${originalText}`;
-          if (activeElement.isContentEditable) {
-            activeElement.textContent = errorText;
-          } else {
-            activeElement.value = errorText;
-          }
+        const targetElement = activeElement && isSmartInputElement(activeElement) ? activeElement : null;
+        if (targetElement) {
+          smartInputSources.set(targetElement, originalText);
+          updateSmartInputDisplay(targetElement, originalText);
+          setSmartInputElementValue(targetElement, `[Translation unavailable for ${targetLang}] ${originalText}`, false);
         }
       } else if (attempts >= maxAttempts) {
         console.log(`Polling timeout for ${targetLang} - stopping after ${maxAttempts} attempts`);
         clearInterval(pollInterval);
 
         // Update UI to show timeout
-        if (activeElement) {
-          const timeoutText = `[Translation timeout for ${targetLang}] ${originalText}`;
-          if (activeElement.isContentEditable) {
-            activeElement.textContent = timeoutText;
-          } else {
-            activeElement.value = timeoutText;
-          }
+        const targetElement = activeElement && isSmartInputElement(activeElement) ? activeElement : null;
+        if (targetElement) {
+          smartInputSources.set(targetElement, originalText);
+          updateSmartInputDisplay(targetElement, originalText);
+          setSmartInputElementValue(targetElement, `[Translation timeout for ${targetLang}] ${originalText}`, false);
         }
       }
     } catch (error) {
