@@ -438,19 +438,20 @@
 
 <style>
   main {
-    /* width: 360px; */
-    width: 400px;
-    /* min-height: 480px; */
+    width: 420px;
+    min-height: 520px;
     padding: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
       "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-    background: #111;
+    background: linear-gradient(135deg, #0a0f1e 0%, #1a1f35 50%, #0f1624 100%);
     position: relative;
     overflow: hidden;
     color: #fff;
-    border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
 
   .glow-effect {
@@ -491,13 +492,15 @@
 
   .raindrop {
     position: absolute;
-    width: 3px;
-    height: 15px;
-    background: var(--color);
+    width: 2px;
+    height: 20px;
+    background: linear-gradient(to bottom, var(--color), transparent);
     border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
     left: calc(var(--i) * 10% + 5px);
     top: -20px;
     animation: rain calc(6s + var(--delay)) linear infinite;
+    opacity: 0.4;
+    filter: blur(0.5px);
   }
 
   @keyframes rain {
@@ -517,10 +520,9 @@
     }
   }
 
-  /* Header 樣式 */
   .header {
     position: relative;
-    padding: 28px 24px 20px;
+    padding: 32px 24px 24px;
     text-align: center;
     z-index: 1;
   }
@@ -534,15 +536,16 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 120px;
-    height: 120px;
+    width: 140px;
+    height: 140px;
     background: radial-gradient(
       circle,
-      rgba(255, 255, 255, 0.3) 0%,
+      rgba(99, 102, 241, 0.3) 0%,
+      rgba(139, 92, 246, 0.2) 50%,
       transparent 70%
     );
     border-radius: 50%;
-    animation: pulse 3s ease-in-out infinite;
+    animation: pulse 4s ease-in-out infinite;
   }
 
   @keyframes pulse {
@@ -559,14 +562,17 @@
 
   .header h1 {
     margin: 0;
-    font-size: 32px;
-    font-weight: 700;
+    font-size: 36px;
+    font-weight: 800;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 10px;
     position: relative;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    text-shadow:
+      0 4px 20px rgba(99, 102, 241, 0.5),
+      0 2px 8px rgba(0, 0, 0, 0.3);
+    letter-spacing: -0.5px;
   }
 
   @keyframes bounce {
@@ -580,39 +586,44 @@
   }
 
   .logo-text {
-    background: linear-gradient(135deg, #fff 0%, #f0f0f0 100%);
+    background: linear-gradient(135deg, #f8fafc 0%, #cbd5e1 50%, #e2e8f0 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
   .subtitle {
-    font-size: 11px;
-    letter-spacing: 2px;
+    font-size: 10px;
+    letter-spacing: 3px;
     text-transform: uppercase;
-    opacity: 0.9;
-    margin-top: 4px;
-    font-weight: 500;
+    color: #94a3b8;
+    margin-top: 6px;
+    font-weight: 600;
   }
 
-  /* Feature Card 樣式 */
   .feature-card {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 16px;
-    padding: 18px;
-    margin: 0 16px 16px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    transition: all 0.3s ease;
+    background: rgba(30, 41, 59, 0.4);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    border-radius: 14px;
+    padding: 20px;
+    margin: 0 20px 18px;
+    box-shadow:
+      0 4px 20px rgba(0, 0, 0, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     z-index: 1;
   }
 
   .feature-card:hover {
-    /* transform: translateY(-2px); */
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+    box-shadow:
+      0 8px 32px rgba(99, 102, 241, 0.2),
+      0 4px 16px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    background: rgba(30, 41, 59, 0.5);
+    border-color: rgba(99, 102, 241, 0.3);
   }
 
   .card-header {
@@ -623,20 +634,23 @@
   }
 
   .icon-wrapper {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     background: linear-gradient(
       135deg,
-      rgba(255, 255, 255, 0.3),
-      rgba(255, 255, 255, 0.1)
+      rgba(99, 102, 241, 0.2),
+      rgba(139, 92, 246, 0.15)
     );
     border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 20px;
+    font-size: 22px;
     flex-shrink: 0;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow:
+      0 2px 8px rgba(0, 0, 0, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(148, 163, 184, 0.1);
   }
 
   .card-title {
@@ -646,17 +660,20 @@
 
   .card-title label {
     display: block;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
-    margin-bottom: 4px;
+    margin-bottom: 5px;
     cursor: pointer;
+    color: #f1f5f9;
+    letter-spacing: -0.2px;
   }
 
   .card-title small {
     display: block;
     font-size: 11px;
-    opacity: 0.85;
-    line-height: 1.4;
+    color: #94a3b8;
+    line-height: 1.5;
+    font-weight: 400;
   }
 
   /* Language Selector */
@@ -667,50 +684,55 @@
   .selector-label {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 7px;
     font-size: 12px;
-    font-weight: 500;
-    margin-bottom: 8px;
-    opacity: 0.95;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #cbd5e1;
+    letter-spacing: 0.3px;
   }
 
   .label-icon {
-    font-size: 14px;
+    font-size: 15px;
   }
 
   .modern-select {
     width: 100%;
-    padding: 10px 14px;
-    background: rgba(255, 255, 255, 0.25);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 11px 16px;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(148, 163, 184, 0.2);
     border-radius: 10px;
-    color: #fff;
-    font-size: 14px;
+    color: #f1f5f9;
+    font-size: 13px;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(12px);
+    letter-spacing: 0.2px;
   }
 
   .modern-select:hover {
-    background: rgba(255, 255, 255, 0.3);
-    border-color: rgba(255, 255, 255, 0.5);
+    background: rgba(15, 23, 42, 0.7);
+    border-color: rgba(99, 102, 241, 0.4);
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15);
   }
 
   .modern-select:focus {
     outline: none;
-    background: rgba(255, 255, 255, 0.35);
-    border-color: rgba(255, 255, 255, 0.6);
-    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+    background: rgba(15, 23, 42, 0.8);
+    border-color: rgba(99, 102, 241, 0.6);
+    box-shadow:
+      0 0 0 3px rgba(99, 102, 241, 0.15),
+      0 2px 12px rgba(99, 102, 241, 0.2);
   }
 
   .modern-select option {
-    background: #667eea;
-    color: #fff;
-    padding: 10px;
+    background: #1e293b;
+    color: #f1f5f9;
+    padding: 12px;
+    font-weight: 500;
   }
 
-  /* Switch Toggle - 升級版 */
   .switch {
     position: relative;
     display: inline-block;
@@ -732,41 +754,55 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(255, 255, 255, 0.25);
-    transition: 0.4s;
+    background: rgba(51, 65, 85, 0.6);
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     border-radius: 28px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
+    border: 1.5px solid rgba(148, 163, 184, 0.3);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
   }
 
   .slider:before {
     position: absolute;
     content: "";
-    height: 20px;
-    width: 20px;
-    left: 3px;
+    height: 22px;
+    width: 22px;
+    left: 2px;
     bottom: 2px;
-    background: linear-gradient(135deg, #fff, #f0f0f0);
-    transition: 0.4s;
+    background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     border-radius: 50%;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    box-shadow:
+      0 2px 6px rgba(0, 0, 0, 0.2),
+      0 1px 2px rgba(0, 0, 0, 0.1);
   }
 
   input:checked + .slider {
-    background: linear-gradient(135deg, #4ade80, #22c55e);
-    border-color: rgba(255, 255, 255, 0.5);
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    border-color: rgba(34, 197, 94, 0.5);
+    box-shadow:
+      inset 0 2px 4px rgba(0, 0, 0, 0.1),
+      0 0 12px rgba(34, 197, 94, 0.4);
   }
 
   input:checked + .slider:before {
     transform: translateX(24px);
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+    box-shadow:
+      0 2px 8px rgba(0, 0, 0, 0.25),
+      0 1px 3px rgba(0, 0, 0, 0.15);
   }
 
   .slider:hover {
-    box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+    border-color: rgba(148, 163, 184, 0.5);
+    box-shadow:
+      inset 0 2px 4px rgba(0, 0, 0, 0.15),
+      0 2px 12px rgba(148, 163, 184, 0.15);
   }
 
   input:checked + .slider:hover {
-    box-shadow: 0 0 15px rgba(74, 222, 128, 0.5);
+    box-shadow:
+      inset 0 2px 4px rgba(0, 0, 0, 0.1),
+      0 0 18px rgba(34, 197, 94, 0.5),
+      0 2px 12px rgba(34, 197, 94, 0.3);
   }
 
   /* 響應式調整 */
