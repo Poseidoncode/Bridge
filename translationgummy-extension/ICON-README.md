@@ -1,28 +1,33 @@
-# TranslationGummy - Icon Generation Tool
+# Translation Bridge - Icon Generation Tool
 
-## 🎨 快速生成Chrome扩展图标
+## 🎨 快速生成 Chrome 扩展图标
 
-这个工具可以从一张源图片自动生成Chrome扩展所需的三种尺寸图标：
+这个工具可以从一张源图片自动生成 Chrome 扩展所需的三种尺寸图标：
+
 - `icon16.png` (16x16) - 扩展列表显示
 - `icon48.png` (48x48) - 扩展管理页面
 - `icon128.png` (128x128) - Chrome Web Store
 
 ## 🚀 使用方法
 
-### 方法1：使用npm脚本（推荐）
+### 方法 1：使用 npm 脚本（推荐）
+
 ```bash
 # 准备一张源图片（建议至少128x128像素）
 # 然后运行：
 npm run generate-icons your-icon.png
 ```
 
-### 方法2：直接运行脚本
+### 方法 2：直接运行脚本
+
 ```bash
 node generate-icons.js your-icon.png
 ```
 
-### 方法3：使用在线工具（如果没有ImageMagick）
+### 方法 3：使用在线工具（如果没有 ImageMagick）
+
 访问以下网站之一：
+
 - [Favicon.io](https://favicon.io/favicon-converter/)
 - [RealFaviconGenerator](https://realfavicongenerator.net/)
 - [Iconifier](https://iconifier.net/)
@@ -31,12 +36,13 @@ node generate-icons.js your-icon.png
 
 - PNG (推荐)
 - JPG/JPEG
-- SVG (会自动转换为PNG)
+- SVG (会自动转换为 PNG)
 - WebP
 
 ## 🔧 系统要求
 
-需要安装ImageMagick：
+需要安装 ImageMagick：
+
 ```bash
 # macOS (使用Homebrew)
 brew install imagemagick
@@ -63,7 +69,7 @@ translationgummy-extension/
 
 ## 💡 图标设计建议
 
-1. **尺寸**: 源图片至少128x128像素
+1. **尺寸**: 源图片至少 128x128 像素
 2. **背景**: 建议使用透明背景或纯色背景
 3. **风格**: 简洁明了，易于小尺寸识别
 4. **颜色**: 与扩展主题相符
@@ -78,4 +84,4 @@ npm run generate-icons icon-source.png
 npm run generate-icons ~/Desktop/my-awesome-icon.png
 ```
 
-生成完成后，图标会自动放置在`dist/icons/`目录中，可以直接加载到Chrome扩展中！
+生成完成后，图标会自动放置在`dist/icons/`目录中，可以直接加载到 Chrome 扩展中！

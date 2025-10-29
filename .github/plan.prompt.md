@@ -158,7 +158,7 @@ Create `manifest.json` in the project root. This is the core definition of the e
 // File: manifest.json
 {
   "manifest_version": 3,
-  "name": "TranslationGummy - Immersive Communicator",
+  "name": "Translation Bridge - Immersive Communicator",
   "version": "1.0.0",
   "description": "Provides a privacy-first, on-device AI-powered immersive reading and writing experience.",
   "permissions": ["storage", "activeTab", "scripting"],
