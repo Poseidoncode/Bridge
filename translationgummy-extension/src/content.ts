@@ -16,6 +16,7 @@ let mutationDeferred = false;
 const smartInputSources = new WeakMap<HTMLElement, string>();
 const smartInputDebugElements = new WeakMap<HTMLElement, HTMLElement>();
 let suppressSmartInputTracking = false;
+let smartInputIdCounter = 0;
 
 type TranslatePageOptions = {
   showIndicator?: boolean;
@@ -57,7 +58,18 @@ function setSmartInputElementValue(element: HTMLElement, text: string, triggerIn
 }
 
 function updateSmartInputDisplay(element: HTMLElement, text: string): void {
-  let debug = smartInputDebugElements.get(element);
+  cleanupOrphanSmartInputDebugs();
+  let debug = smartInputDebugElements.get(element) || null;
+  if (debug && !debug.isConnected) {
+    smartInputDebugElements.delete(element);
+    debug = null;
+  }
+  if (!element.dataset.translationgummySmartInputId) {
+    smartInputIdCounter += 1;
+    element.dataset.translationgummySmartInputId = `si-${smartInputIdCounter}`;
+  }
+  const targetId = element.dataset.translationgummySmartInputId || '';
+  cleanupSmartInputDebugSiblings(element, debug);
   if (!debug) {
     debug = document.createElement('div');
     debug.dataset.translationgummyInjected = 'smart-input-debug';
@@ -70,12 +82,43 @@ function updateSmartInputDisplay(element: HTMLElement, text: string): void {
     }
     smartInputDebugElements.set(element, debug);
   }
+  if (debug.previousElementSibling !== element) {
+    element.insertAdjacentElement('afterend', debug);
+  }
+  debug.dataset.translationgummySmartInputFor = targetId;
   const displayText = text.length > 500 ? `${text.slice(0, 500)}...` : text;
   debug.textContent = displayText ? `Smart Input source: ${displayText}` : 'Smart Input source: (empty)';
 }
 
+function cleanupSmartInputDebugSiblings(element: HTMLElement, keep: HTMLElement | null): void {
+  let sibling: Element | null = element.nextElementSibling;
+  while (sibling) {
+    const next = sibling.nextElementSibling;
+    if (sibling instanceof HTMLElement && sibling.dataset.translationgummyInjected === 'smart-input-debug' && sibling !== keep) {
+      sibling.remove();
+    }
+    sibling = next;
+  }
+}
+
+function cleanupOrphanSmartInputDebugs(): void {
+  const nodes = document.querySelectorAll<HTMLElement>('[data-translationgummy-injected="smart-input-debug"]');
+  nodes.forEach(node => {
+    const targetId = node.dataset.translationgummySmartInputFor;
+    if (!targetId) {
+      node.remove();
+      return;
+    }
+    const anchor = document.querySelector<HTMLElement>(`[data-translationgummy-smart-input-id="${targetId}"]`);
+    if (!anchor || !anchor.isConnected) {
+      node.remove();
+    }
+  });
+}
+
 // Listen for input focus events
 document.addEventListener('focusin', (event) => {
+  cleanupOrphanSmartInputDebugs();
   const target = event.target;
   if (isSmartInputElement(target)) {
     activeElement = target;
@@ -91,6 +134,7 @@ document.addEventListener('focusin', (event) => {
 });
 
 document.addEventListener('input', (event) => {
+  cleanupOrphanSmartInputDebugs();
   if (suppressSmartInputTracking) {
     return;
   }
@@ -536,6 +580,7 @@ async function translatePage(options: TranslatePageOptions = {}) {
     const tasks: TranslationTask[] = [];
 
     for (const node of nodes) {
+      sanitizeTranslationArtifacts(node);
       if (node.classList.contains('translationgummy-translated')) continue;
       if (node.querySelector(':scope > .translationgummy-translation-wrapper')) continue;
 
@@ -746,9 +791,8 @@ function getInlineOriginalText(element: HTMLElement): string {
 }
 
 function applyBlockTranslation(element: HTMLElement, translatedText: string): void {
+  const existingWrapper = sanitizeTranslationArtifacts(element);
   element.classList.add('translationgummy-translated');
-
-  const existingWrapper = element.querySelector(':scope > .translationgummy-translation-wrapper');
   if (existingWrapper) {
     const translationContent = existingWrapper.querySelector('font.translationgummy-translation-content');
     if (translationContent) {
@@ -819,6 +863,30 @@ function shouldInsertLineBreak(node: HTMLElement): boolean {
     console.warn('Unable to determine computed style for line break calculation:', error);
     return true;
   }
+}
+
+function sanitizeTranslationArtifacts(element: HTMLElement): HTMLElement | null {
+  const wrappers = Array.from(element.querySelectorAll<HTMLElement>(':scope > .translationgummy-translation-wrapper'));
+  wrappers.forEach((wrapperNode, index) => {
+    if (index > 0) {
+      wrapperNode.remove();
+    }
+  });
+  const primaryWrapper = wrappers[0] && wrappers[0].isConnected ? wrappers[0] : null;
+  const lineBreaks = Array.from(element.querySelectorAll<HTMLElement>(':scope > [data-translationgummy-injected="line-break"]'));
+  lineBreaks.forEach((lineBreakNode, index) => {
+    if (index > 0) {
+      lineBreakNode.remove();
+    }
+  });
+  const firstLineBreak = lineBreaks[0] && lineBreaks[0].isConnected ? lineBreaks[0] : null;
+  if (firstLineBreak && primaryWrapper && firstLineBreak.nextSibling !== primaryWrapper) {
+    element.insertBefore(firstLineBreak, primaryWrapper);
+  }
+  if (primaryWrapper && primaryWrapper.dataset.translationgummyInjected !== 'translation') {
+    primaryWrapper.dataset.translationgummyInjected = 'translation';
+  }
+  return primaryWrapper;
 }
 
 function revertPage() {
@@ -1108,6 +1176,7 @@ async function pollForPageTranslationCompletion(targetLang: string) {
   // First, collect all source languages from the page
   const nodes = document.querySelectorAll<HTMLElement>('p, h1, h2, h3, li, blockquote');
   for (const node of nodes) {
+      sanitizeTranslationArtifacts(node);
     if (node.classList.contains('translationgummy-translated')) continue;
     if (node.querySelector(':scope > .translationgummy-translation-wrapper')) continue;
 
@@ -1404,6 +1473,7 @@ async function updateExistingTranslations() {
     // Update block translations
     const translatedElements = document.querySelectorAll<HTMLElement>('.translationgummy-translated');
     for (const element of translatedElements) {
+      sanitizeTranslationArtifacts(element);
       const originalText = element.dataset.translationgummyOriginal;
       if (originalText) {
         try {
