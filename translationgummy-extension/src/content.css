@@ -7,7 +7,7 @@
 
 }
 
-.translationbridge-translation-wrapper {
+/* .translationbridge-translation-wrapper {
   margin: 4px 0 !important;
   display: inline-block;
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(139, 92, 246, 0.08));
@@ -34,9 +34,9 @@ font.translationbridge-translation-content {
   font-weight: 500;
   letter-spacing: 0.2px;
   line-height: 1.6;
-}
+} */
 
-@media (prefers-color-scheme: dark) {
+/* @media (prefers-color-scheme: dark) {
   font.translationbridge-translation-content {
     color: #e2e8f0;
   }
@@ -49,7 +49,22 @@ font.translationbridge-translation-content {
   .translationbridge-translation-wrapper:hover {
     background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2));
   }
+} */
+
+.translationbridge-translation-wrapper {
+  margin: 2px 0 !important;
+  display: inline-block;
 }
+
+
+font.translationbridge-translation-content {
+  font-family: inherit;
+  word-break: break-word;
+  user-select: text;
+  display: inline-block;
+}
+
+
 
 .translationbridge-smart-input-debug {
   font-size: 12px;
