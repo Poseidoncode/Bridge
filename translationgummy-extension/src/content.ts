@@ -20,6 +20,12 @@ let smartInputIdCounter = 0;
 let smartInputDisplayEnabled = false;
 let smartInputHintShown = false;
 let smartInputHintTimer: number | null = null;
+let languageDetectorPromise: Promise<LanguageDetectorInstance | null> | null = null;
+let languageDetectorBlocked = false;
+
+interface LanguageDetectorInstance {
+  detect(text: string): Promise<Array<{ detectedLanguage: string; confidence: number }>>;
+}
 
 type TranslatePageOptions = {
   showIndicator?: boolean;
@@ -175,6 +181,103 @@ function showSmartInputHint(): void {
     hint.remove();
     smartInputHintTimer = null;
   }, 3200);
+}
+
+function normalizeLanguageCode(code: string): string {
+  if (!code) {
+    return 'en';
+  }
+  const lower = code.toLowerCase();
+  if (lower === 'cmn-hant' || lower === 'zh-hant' || lower === 'zh-tw' || lower === 'zh-hk') {
+    return 'zh-Hant';
+  }
+  if (lower === 'cmn-hans' || lower === 'zh-hans' || lower === 'zh-cn' || lower === 'zh-sg') {
+    return 'zh-Hans';
+  }
+  if (lower === 'cmn' || lower === 'zh') {
+    return 'zh';
+  }
+  const parts = lower.split('-');
+  if (parts.length > 1) {
+    const [primary, ...rest] = parts;
+    const mapped = rest.map(part => {
+      if (part.length === 2) {
+        return part.toUpperCase();
+      }
+      return part.charAt(0).toUpperCase() + part.slice(1);
+    });
+    return [primary, ...mapped].join('-');
+  }
+  return lower;
+}
+
+async function getLanguageDetector(force = false): Promise<LanguageDetectorInstance | null> {
+  if (languageDetectorBlocked && !force) {
+    return null;
+  }
+  if (typeof LanguageDetector === 'undefined') {
+    return null;
+  }
+  if (!languageDetectorPromise || force) {
+    const creation = LanguageDetector.create().then(detector => {
+      languageDetectorBlocked = false;
+      return detector;
+    }).catch(error => {
+      languageDetectorPromise = null;
+      if (error && typeof error === 'object' && 'name' in error && (error as any).name === 'NotAllowedError') {
+        languageDetectorBlocked = true;
+      }
+      console.error('LanguageDetector create failed:', error);
+      return null;
+    });
+    languageDetectorPromise = creation;
+  }
+  const instance = await languageDetectorPromise;
+  if (!instance) {
+    languageDetectorBlocked = true;
+  }
+  return instance;
+}
+
+async function detectLanguageWithChrome(text: string): Promise<string | null> {
+  if (!chrome.i18n || !chrome.i18n.detectLanguage) {
+    return null;
+  }
+  try {
+    const result = await chrome.i18n.detectLanguage(text);
+    const top = result?.languages?.[0];
+    if (top?.language) {
+      return normalizeLanguageCode(top.language);
+    }
+  } catch (error) {
+    console.error('chrome.i18n.detectLanguage failed:', error);
+  }
+  return null;
+}
+
+async function detectLanguageAccurate(text: string, forceDetector = false): Promise<string> {
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return 'en';
+  }
+  const limited = trimmed.length > 4000 ? trimmed.slice(0, 4000) : trimmed;
+  const detector = await getLanguageDetector(forceDetector);
+  if (detector) {
+    try {
+      const results = await detector.detect(limited);
+      const top = results?.[0];
+      if (top?.detectedLanguage) {
+        return normalizeLanguageCode(top.detectedLanguage);
+      }
+    } catch (error) {
+      console.error('LanguageDetector detect failed:', error);
+    }
+  }
+  const chromeResult = await detectLanguageWithChrome(limited);
+  if (chromeResult) {
+    return chromeResult;
+  }
+  return heuristicLanguageDetection(limited);
 }
 
 // Listen for input focus events
@@ -401,7 +504,7 @@ document.addEventListener('keydown', async (event) => {
     let finalText: string | null = null;
     try {
       if (typeof Translator !== 'undefined') {
-        const detectedSourceLang = detectLanguage(sourceText);
+        const detectedSourceLang = await detectLanguageAccurate(sourceText, true);
         const availability = await Translator.availability({
           sourceLanguage: detectedSourceLang,
           targetLanguage: targetLang
@@ -1041,7 +1144,7 @@ async function translateText(text: string, targetLang: string): Promise<string |
     }
 
     // Detect source language from text content
-    const detectedSourceLang = detectLanguage(text);
+    const detectedSourceLang = await detectLanguageAccurate(text);
 
     // Check if translation is available for the language pair
     const availability = await Translator.availability({
@@ -1188,7 +1291,7 @@ function ensureTraditionalChinese(text: string): string {
 }
 
 // Simple language detection function
-function detectLanguage(text: string): string {
+function heuristicLanguageDetection(text: string): string {
   // Check for Korean characters first (highest priority for Korean text)
   const koreanRegex = /[\u1100-\u11ff\u3130-\u318f\uac00-\ud7af]/;
   if (koreanRegex.test(text)) {
@@ -1256,7 +1359,7 @@ async function pollForPageTranslationCompletion(targetLang: string) {
 
     const textContent = node.textContent?.trim();
     if (textContent && textContent.length > 10) {
-      const sourceLang = detectLanguage(textContent);
+      const sourceLang = heuristicLanguageDetection(textContent);
       sourceLanguages.add(sourceLang);
     }
   }
@@ -1608,6 +1711,12 @@ declare global {
       targetLanguage: string;
       monitor?: (m: any) => void;
     }): Promise<TranslatorInstance>;
+  };
+
+  var LanguageDetector: {
+    create(options?: {
+      monitor?: (m: any) => void;
+    }): Promise<LanguageDetectorInstance>;
   };
 
   interface TranslatorInstance {
