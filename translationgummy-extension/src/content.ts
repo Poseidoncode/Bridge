@@ -667,8 +667,13 @@ async function translatePage(options: TranslatePageOptions = {}) {
         continue;
       }
 
-      if (node.tagName === 'LI' && isNavigationContext(node)) {
-        continue;
+      if (node.tagName === 'LI') {
+        if (isNavigationContext(node)) {
+          continue;
+        }
+        if (listItemHasBlockContent(node)) {
+          continue;
+        }
       }
 
       const textContent = node.textContent?.trim();
@@ -817,6 +822,13 @@ function getInlineTranslationTargets(node: HTMLElement): HTMLElement[] {
   }
 
   return targets;
+}
+
+function listItemHasBlockContent(node: HTMLElement): boolean {
+  if (node.tagName !== 'LI') {
+    return false;
+  }
+  return node.querySelector('p, h1, h2, h3, h4, h5, h6, blockquote') !== null;
 }
 
 function hasDirectTextNode(element: HTMLElement): boolean {
@@ -1356,9 +1368,14 @@ async function performPageTranslation(targetLang: string) {
         continue;
       }
 
-      if (node.tagName === 'LI' && isNavigationContext(node)) {
-        // Complex navigation list-items get handled via inline targets or skipped to avoid layout breaks
-        continue;
+      if (node.tagName === 'LI') {
+        if (isNavigationContext(node)) {
+          // Complex navigation list-items get handled via inline targets or skipped to avoid layout breaks
+          continue;
+        }
+        if (listItemHasBlockContent(node)) {
+          continue;
+        }
       }
 
       const textContent = node.textContent?.trim();
