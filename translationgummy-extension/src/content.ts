@@ -1350,16 +1350,16 @@ async function pollForPageTranslationCompletion(targetLang: string) {
   let attempts = 0;
   const maxAttempts = 30; // Poll for up to 5 minutes (30 * 10 seconds)
 
-  // First, collect all source languages from the page
+  // First, collect all source languages from the page using accurate detection
   const nodes = document.querySelectorAll<HTMLElement>('p, h1, h2, h3, li, blockquote');
   for (const node of nodes) {
-      sanitizeTranslationArtifacts(node);
+    sanitizeTranslationArtifacts(node);
     if (node.classList.contains('translationbridge-translated')) continue;
     if (node.querySelector(':scope > .translationbridge-translation-wrapper')) continue;
 
     const textContent = node.textContent?.trim();
     if (textContent && textContent.length > 10) {
-      const sourceLang = heuristicLanguageDetection(textContent);
+      const sourceLang = await detectLanguageAccurate(textContent);
       sourceLanguages.add(sourceLang);
     }
   }
