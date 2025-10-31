@@ -67,6 +67,9 @@ function setSmartInputElementValue(element: HTMLElement, text: string, triggerIn
 }
 
 function updateSmartInputDisplay(element: HTMLElement, text: string): void {
+  removeSmartInputDebug(element);
+  // Smart Input debug UI temporarily disabled; restore by uncommenting the block below.
+  /*
   if (!smartInputDisplayEnabled) {
     removeSmartInputDebug(element);
     return;
@@ -101,6 +104,7 @@ function updateSmartInputDisplay(element: HTMLElement, text: string): void {
   debug.dataset.translationbridgeSmartInputFor = targetId;
   const displayText = text.length > 500 ? `${text.slice(0, 500)}...` : text;
   debug.textContent = displayText ? `Smart Input source: ${displayText}` : 'Smart Input source: (empty)';
+  */
 }
 
 function removeSmartInputDebug(element: HTMLElement): void {
