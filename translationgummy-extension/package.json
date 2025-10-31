@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "author": "Poseidoncode",
   "scripts": {
     "dev": "vite",
     "build": "vite build && node ./scripts/copy-content-css.js",
@@ -21,5 +22,8 @@
     "svelte-check": "^4.3.2",
     "typescript": "~5.9.3",
     "vite": "^6.0.1"
+  },
+  "engines": {
+    "node": ">=22.14.0"
   }
 }

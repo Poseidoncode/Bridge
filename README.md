@@ -14,7 +14,7 @@ To install the Bridge browser extension, follow these steps:
 
 ### Prerequisites
 
-- Node.js (version 22 or higher)
+- Node.js (version 22.14 or higher)
 - npm (comes with Node.js)
 - Google Chrome browser
 
@@ -23,8 +23,8 @@ To install the Bridge browser extension, follow these steps:
 1. **Clone or download the repository:**
 
    ```
-   git clone https://github.com/Poseidoncode/Gummy.git
-   cd Gummy
+   git clone https://github.com/Poseidoncode/Bridge.git
+   cd Bridge
    ```
 
 2. **Navigate to the extension directory:**
