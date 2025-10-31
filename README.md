@@ -53,3 +53,21 @@ To install the Bridge browser extension, follow these steps:
    - Click "Load unpacked" and select the `dist` folder inside the `translationgummy-extension` directory.
 
 The Bridge extension should now be installed and ready to use. You can access it from the extensions menu in Chrome.
+
+## 🎁 Usage
+
+Bridge offers two main features to enhance your web interaction across languages:
+
+### 1. Immersive Reading Mode
+
+- **How to activate:** Click the Bridge extension icon in your browser toolbar while on any webpage.
+- **What it does:** Transforms the current webpage into a dual-language view, displaying the original text alongside accurate translations.
+- **Benefits:** Allows for nuanced understanding without losing context, making it easier to read and comprehend content in foreign languages.
+
+### 2. Text Input Translation
+
+- **How to use:** In any text input field (such as comments, forms, or chat boxes), type your message in your native language.
+- **Translation shortcut:** Press the designated shortcut key (default: Shift+S) to instantly convert your text into fluent, natural-sounding prose in the target language.
+- **Customization:** You can change the shortcut key and select your native and target languages in the extension settings.
+
+These features work together to break down language barriers, enabling you to both consume and contribute to global conversations seamlessly.
