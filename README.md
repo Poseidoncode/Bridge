@@ -58,15 +58,19 @@ The Bridge extension should now be installed and ready to use. You can access it
 
 Bridge offers two main features to enhance your web interaction across languages:
 
-### 1. Immersive Reading Mode
+### 1. Real-time Translation: Immersive Reading Mode
 
 - **How to activate:** Click the Bridge extension icon in your browser toolbar while on any webpage.
 - **What it does:** Transforms the current webpage into a dual-language view, displaying the original text alongside accurate translations.
 - **Benefits:** Allows for nuanced understanding without losing context, making it easier to read and comprehend content in foreign languages.
 
-### 2. Text Input Translation
+### 2. Smart Input: Text Input Translation
 
 - **How to use:** In any text input field (such as comments, forms, or chat boxes), type your message in your native language.
 - **Translation shortcut:** Press the designated shortcut key (default: Shift+S) to instantly convert your text into fluent, natural-sounding prose in the target language.
 
 These features work together to break down language barriers, enabling you to both consume and contribute to global conversations seamlessly.
+
+### Bridge Chrome Extension Interface Preview
+
+![Product Image](https://raw.githubusercontent.com/Poseidoncode/Bridge/main/translationgummy-extension/Product%20Image.png)

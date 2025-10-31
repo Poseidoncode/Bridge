@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>翻譯測試頁面</title>
+    <title>Translation Test Page</title>
     <style>
       body {
         font-family: Arial, sans-serif;
@@ -53,69 +53,69 @@
     </style>
   </head>
   <body>
-    <h1>🧪 Translationbridge 擴展測試頁面</h1>
+    <h1>🧪 Translationbridge Extension Test Page</h1>
 
     <div class="instructions">
-      <h3>測試說明：</h3>
+      <h3>Test Instructions:</h3>
       <ol>
-        <li>載入此擴展到Chrome</li>
-        <li>在此頁面上測試翻譯功能</li>
-        <li>聚焦在輸入框，然後按 <kbd>Shift</kbd> + <kbd>S</kbd> 來觸發翻譯</li>
-        <li>檢查控制台以查看偵錯訊息</li>
+        <li>Load this extension into Chrome</li>
+        <li>Test the translation function on this page</li>
+        <li>Focus on the input box, then press <kbd>Shift</kbd> + <kbd>S</kbd> to trigger translation</li>
+        <li>Check the console to view debug messages</li>
       </ol>
     </div>
 
     <div class="test-section">
-      <h2>輸入框測試</h2>
-      <p>請在下面的輸入框輸入中文文字：</p>
+      <h2>Input Box Test</h2>
+      <p>Please enter Chinese text in the input box below:</p>
       <input
         type="text"
         id="testInput"
-        placeholder="請輸入要翻譯的中文文字..."
+        placeholder="Please enter the Chinese text to translate..."
       />
       <p>
         <small
-          >💡 聚焦在輸入框後按 <kbd>Shift</kbd> + <kbd>S</kbd> 來翻譯</small
+          >💡 Focus on the input box and press Shift + S to translate</small
         >
       </p>
     </div>
 
     <div class="test-section">
-      <h2>文字區域測試</h2>
-      <p>請在下面的文字區域輸入較長的中文文字：</p>
+      <h2>Text Area Test</h2>
+      <p>Please enter longer Chinese text in the text area below:</p>
       <textarea
         id="testTextarea"
         rows="4"
-        placeholder="請輸入要翻譯的中文文字..."
+        placeholder="Please enter the Chinese text to translate..."
       ></textarea>
       <p>
         <small
-          >💡 聚焦在文字區域後按 <kbd>Shift</kbd> + <kbd>S</kbd> 來翻譯</small
+          >💡 Focus on the text area and press Shift + S to translate</small
         >
       </p>
     </div>
 
     <div class="test-section">
-      <h2>頁面翻譯測試</h2>
-      <p>這個段落有超過10個字符的中文內容，用來測試頁面翻譯功能。</p>
-      <p>這是另一個段落，包含了各種中文字符和符號。</p>
-      <h3>標題測試</h3>
-      <p>這是一個列表項目，用來測試頁面翻譯功能是否正常運作。</p>
+      <h2>Page Translation Test</h2>
+      <p>This paragraph has more than 10 characters of Chinese content to test the page translation function.</p>
+      <p>This is another paragraph containing various Chinese characters and symbols.</p>
+      <h3>Title Test</h3>
+      <p>This is a list item to test if the page translation function works properly.</p>
       <ul>
-        <li>列表項目一：測試中文翻譯功能</li>
-        <li>列表項目二：確認API調用是否正確</li>
-        <li>列表項目三：驗證錯誤處理機制</li>
+        <li>List item one: Test Chinese translation function</li>
+        <li>List item two: Confirm if API calls are correct</li>
+        <li>List item three: Verify error handling mechanism</li>
       </ul>
       <blockquote>
-        這是一個引用區塊，測試翻譯功能是否支援這種HTML元素。
+        This is a quote block to test if the translation function supports this type of HTML element.
       </blockquote>
     </div>
 
     <div class="test-section">
-      <h2>偵錯資訊</h2>
-      <p>請打開瀏覽器開發者工具的控制台來查看擴展的偵錯訊息。</p>
-      <button onclick="checkExtensionStatus()">檢查擴展狀態</button>
-      <button onclick="clearConsole()">清除控制台</button>
+      <h2>Debug Information</h2>
+      <p>Please open the browser developer tools console to view the extension's debug messages.</p>
+      <button onclick="checkExtensionStatus()">Check Extension Status</button>
+      <button onclick="clearConsole()">Clear Console</button>
       <p id="statusInfo"></p>
     </div>
 
@@ -127,35 +127,35 @@
           typeof window.__TRANSLATIONbridge_CONTENT_SCRIPT_LOADED !==
           "undefined"
         ) {
-          statusDiv.innerHTML = "✅ 擴展內容腳本已載入";
+          statusDiv.innerHTML = "✅ Extension content script loaded";
         } else {
-          statusDiv.innerHTML = "❌ 擴展內容腳本未載入";
+          statusDiv.innerHTML = "❌ Extension content script not loaded";
         }
 
         // 檢查Translator API支援
         if (typeof Translator !== "undefined") {
-          statusDiv.innerHTML += "<br>✅ Translator API 可用";
+          statusDiv.innerHTML += "<br>✅ Translator API available";
         } else {
-          statusDiv.innerHTML += "<br>❌ Translator API 不可用";
+          statusDiv.innerHTML += "<br>❌ Translator API unavailable";
         }
       }
 
       function clearConsole() {
         console.clear();
-        document.getElementById("statusInfo").innerHTML = "控制台已清除";
+        document.getElementById("statusInfo").innerHTML = "Console cleared";
       }
 
       // 監聽輸入框焦點事件來顯示提示
       document
         .getElementById("testInput")
         .addEventListener("focus", function () {
-          console.log("🔍 輸入框已聚焦，按 Shift + S 來翻譯");
+          console.log("🔍 Input box focused, press Shift + S to translate");
         });
 
       document
         .getElementById("testTextarea")
         .addEventListener("focus", function () {
-          console.log("🔍 文字區域已聚焦，按 Shift + S 來翻譯");
+          console.log("🔍 Text area focused, press Shift + S to translate");
         });
 
       // 檢查擴展狀態
