@@ -73,4 +73,4 @@ These features work together to break down language barriers, enabling you to bo
 
 ### Bridge Chrome Extension Interface Preview
 
-![Product Image](https://raw.githubusercontent.com/Poseidoncode/Bridge/main/translationgummy-extension/Product%20Image.png)
+<img src="https://raw.githubusercontent.com/Poseidoncode/Bridge/main/translationgummy-extension/Product%20Image.png" alt="Product Image" width="400">
