@@ -8,7 +8,7 @@ What truly sets Bridge apart is its architecture. Unlike services that process d
 
 This isn't just another translation tool; it's a new paradigm for web interaction. Bridge is designed not merely to translate content, but to foster genuine dialogue, giving everyone the confidence to step across the linguistic divide and join the global conversation.
 
-## Installation
+## 🚀 Installation
 
 To install the Bridge browser extension, follow these steps:
 
