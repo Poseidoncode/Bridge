@@ -1,4 +1,4 @@
-## Software Introduction
+## &#10022; Software Introduction
 
 For years, the promise of a truly global internet has been fractured by the invisible wall of language. We browse to its edges, only to find vibrant conversations rendered incomprehensible. A new browser extension, “Bridge,” aims not just to lower that wall, but to make it dissolve entirely.
 
