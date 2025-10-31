@@ -71,6 +71,6 @@ Bridge offers two main features to enhance your web interaction across languages
 
 These features work together to break down language barriers, enabling you to both consume and contribute to global conversations seamlessly.
 
-### ✧ Bridge Chrome Extension Interface Preview
+### ✦ Bridge Chrome Extension Interface Preview
 
 <img src="https://raw.githubusercontent.com/Poseidoncode/Bridge/main/translationgummy-extension/Product%20Image.png" alt="Product Image" width="155">
