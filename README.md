@@ -26,7 +26,7 @@ To install the Bridge browser extension, follow these steps:
    git clone https://github.com/Poseidoncode/Bridge.git
    ```
 
-2. **Navigate to the extension directory:**
+2. **Open Project and Navigate to the extension directory:**
 
    ```
    cd translationgummy-extension
