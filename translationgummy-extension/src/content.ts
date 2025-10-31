@@ -20,6 +20,8 @@ let smartInputIdCounter = 0;
 let smartInputDisplayEnabled = false;
 let smartInputHintShown = false;
 let smartInputHintTimer: number | null = null;
+let smartInputStatusElement: HTMLElement | null = null;
+let smartInputStatusTimer: number | null = null;
 let languageDetectorPromise: Promise<LanguageDetectorInstance | null> | null = null;
 let languageDetectorBlocked = false;
 
@@ -156,6 +158,7 @@ function resetSmartInputPresentation(): void {
     clearTimeout(smartInputHintTimer);
     smartInputHintTimer = null;
   }
+  hideSmartInputStatus();
   const hint = document.getElementById('translationbridge-smart-input-hint');
   if (hint) {
     hint.remove();
@@ -185,6 +188,57 @@ function showSmartInputHint(): void {
     hint.remove();
     smartInputHintTimer = null;
   }, 3200);
+}
+
+function ensureSmartInputStatusElement(): HTMLElement {
+  if (!smartInputStatusElement || !smartInputStatusElement.isConnected) {
+    smartInputStatusElement = document.createElement('div');
+    smartInputStatusElement.id = 'translationbridge-smart-input-status';
+    smartInputStatusElement.dataset.translationbridgeInjected = 'smart-input-status';
+    smartInputStatusElement.style.cssText = 'position:fixed;bottom:24px;right:24px;max-width:320px;background:#1d4ed8;color:#f8fafc;padding:12px 18px;border-radius:10px;font-family:Arial,sans-serif;font-size:13px;line-height:1.5;box-shadow:0 18px 30px rgba(15,23,42,0.35);z-index:10002;pointer-events:none;border:1px solid rgba(96,165,250,0.4);transition:opacity 0.2s ease;opacity:1;';
+    document.body.appendChild(smartInputStatusElement);
+  }
+  return smartInputStatusElement;
+}
+
+function showSmartInputStatus(message: string, tone: 'info' | 'success' | 'error' = 'info', persistent = false, duration = 3200): void {
+  const element = ensureSmartInputStatusElement();
+  element.textContent = message;
+  if (tone === 'success') {
+    element.style.background = '#15803d';
+    element.style.borderColor = 'rgba(74,222,128,0.45)';
+  } else if (tone === 'error') {
+    element.style.background = '#b91c1c';
+    element.style.borderColor = 'rgba(248,113,113,0.45)';
+  } else {
+    element.style.background = '#1d4ed8';
+    element.style.borderColor = 'rgba(96,165,250,0.4)';
+  }
+  element.style.opacity = '1';
+  if (smartInputStatusTimer !== null) {
+    clearTimeout(smartInputStatusTimer);
+    smartInputStatusTimer = null;
+  }
+  if (!persistent) {
+    smartInputStatusTimer = window.setTimeout(() => {
+      hideSmartInputStatus();
+    }, duration);
+  }
+}
+
+function hideSmartInputStatus(): void {
+  if (smartInputStatusTimer !== null) {
+    clearTimeout(smartInputStatusTimer);
+    smartInputStatusTimer = null;
+  }
+  if (smartInputStatusElement) {
+    const element = smartInputStatusElement;
+    smartInputStatusElement = null;
+    element.style.opacity = '0';
+    window.setTimeout(() => {
+      element.remove();
+    }, 200);
+  }
 }
 
 function normalizeLanguageCode(code: string): string {
@@ -526,37 +580,68 @@ document.addEventListener('keydown', async (event) => {
           }
         } else if (availability === 'downloadable') {
           console.log(`Translation model for ${targetLang} needs to be downloaded - starting download...`);
+          showSmartInputStatus(`Downloading ${targetLang} model...`, 'info', true);
           const downloadingText = `[Translation model downloading for ${targetLang}, please wait...] ${sourceText}`;
           setSmartInputElementValue(element, downloadingText, false);
+          let downloadHandled = false;
           try {
             const translator = await Translator.create({
               sourceLanguage: detectedSourceLang,
               targetLanguage: targetLang,
               monitor(m) {
                 m.addEventListener('downloadprogress', async (e: ProgressEvent) => {
-                  const progress = Math.round((e.loaded / e.total) * 100);
-                  console.log(`Downloaded ${progress}% for ${targetLang}`);
-                  const progressText = `[Downloading ${progress}% for ${targetLang}] ${sourceText}`;
-                  setSmartInputElementValue(element, progressText, false);
-                  if (progress >= 100) {
-                    console.log(`Download completed for ${targetLang}, starting translation...`);
-                    try {
-                      const result = await translator.translate(sourceText);
-                      console.log(`Translation completed for ${targetLang}: ${sourceText} -> ${result}`);
-                      setSmartInputElementValue(element, result);
-                    } catch (translationError) {
-                      console.error('Error during translation after download:', translationError);
-                      setSmartInputElementValue(element, `[Translation failed for ${targetLang}] ${sourceText}`, false);
+                  const total = e.total || 0;
+                  const loaded = e.loaded || 0;
+                  const progress = total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
+                  if (!downloadHandled) {
+                    console.log(`Downloaded ${progress}% for ${targetLang}`);
+                    showSmartInputStatus(progress > 0 ? `Downloading ${targetLang} model... ${progress}%` : `Downloading ${targetLang} model...`, 'info', true);
+                    const progressText = `[Downloading ${progress}% for ${targetLang}] ${sourceText}`;
+                    setSmartInputElementValue(element, progressText, false);
+                    if (progress >= 100) {
+                      downloadHandled = true;
+                      console.log(`Download completed for ${targetLang}, starting translation...`);
+                      try {
+                        const result = await translator.translate(sourceText);
+                        console.log(`Translation completed for ${targetLang}: ${sourceText} -> ${result}`);
+                        if (targetLang === 'zh-Hant') {
+                          setSmartInputElementValue(element, ensureTraditionalChinese(result));
+                        } else {
+                          setSmartInputElementValue(element, result);
+                        }
+                        showSmartInputStatus(`Download completed for ${targetLang}`, 'success');
+                      } catch (translationError) {
+                        console.error('Error during translation after download:', translationError);
+                        setSmartInputElementValue(element, `[Translation failed for ${targetLang}] ${sourceText}`, false);
+                        showSmartInputStatus(`Translation failed for ${targetLang}`, 'error');
+                      }
                     }
                   }
                 });
               },
             });
+            if (!downloadHandled) {
+              downloadHandled = true;
+              try {
+                const result = await translator.translate(sourceText);
+                console.log(`Translation completed for ${targetLang}: ${sourceText} -> ${result}`);
+                if (targetLang === 'zh-Hant') {
+                  setSmartInputElementValue(element, ensureTraditionalChinese(result));
+                } else {
+                  setSmartInputElementValue(element, result);
+                }
+                showSmartInputStatus(`Download completed for ${targetLang}`, 'success');
+              } catch (translationError) {
+                console.error('Error during translation after download:', translationError);
+                setSmartInputElementValue(element, `[Translation failed for ${targetLang}] ${sourceText}`, false);
+                showSmartInputStatus(`Translation failed for ${targetLang}`, 'error');
+              }
+            }
             return `[Translation model downloading for ${targetLang}, please wait...] ${sourceText}`;
           } catch (downloadError: any) {
             console.error('Error starting model download:', downloadError);
             if (downloadError.name === 'NotAllowedError' && downloadError.message.includes('user gesture')) {
-              console.log('User gesture required for download, but download may still proceed in background');
+              showSmartInputStatus(`Downloading ${targetLang} model...`, 'info', true);
               await new Promise(resolve => setTimeout(resolve, 2000));
               try {
                 const recheckAvailability = await Translator.availability({
@@ -572,11 +657,13 @@ document.addEventListener('keydown', async (event) => {
               }
               return `[Translation model downloading for ${targetLang}, please wait...] ${sourceText}`;
             }
+            showSmartInputStatus(`Download failed for ${targetLang}`, 'error');
             return `[Download failed for ${targetLang}] ${sourceText}`;
           }
         } else {
           console.warn(`Translation not available for target language: ${targetLang}`);
           finalText = `[Translation temporarily unavailable: ${targetLang}] ${sourceText}`;
+          showSmartInputStatus(`Translation unavailable for ${targetLang}`, 'error');
         }
       } else {
         console.warn('Translator API not supported — using fallback translation for testing');
@@ -589,6 +676,7 @@ document.addEventListener('keydown', async (event) => {
       console.error("Translationbridge Translator Error:", error);
       const errorText = `[Translation error] ${sourceText}`;
       setSmartInputElementValue(element, errorText, false);
+      showSmartInputStatus('Translation error. Please try again.', 'error');
     }
   }
 });
