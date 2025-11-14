@@ -72,3 +72,6 @@ These features work together to break down language barriers, enabling you to bo
 ### ✦ Bridge Chrome Extension Interface Preview
 
 <img src="https://raw.githubusercontent.com/Poseidoncode/Bridge/main/translationgummy-extension/Product%20Image.png" alt="Product Image" width="155">
+
+© 2025 Ray Hung. All Rights Reserved.  
+This project is not open-source.
