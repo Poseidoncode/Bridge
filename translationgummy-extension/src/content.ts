@@ -1349,7 +1349,7 @@ function ensureTraditionalChinese(text: string): string {
   // This is a basic implementation - for production, consider using a proper conversion library
 
   // Check if text contains Simplified Chinese characters
-  const simplifiedChineseChars = ['爱', '为', '会', '国', '学', '生', '们', '说', '来', '去', '时', '年', '月', '日', '人', '大', '小', '长', '高', '低'];
+  const simplifiedChineseChars = ['爱', '为', '会', '国', '学', '门', '说', '来', '时', '长'];
   const containsSimplified = simplifiedChineseChars.some(char => text.includes(char));
 
   if (containsSimplified) {
@@ -1360,21 +1360,11 @@ function ensureTraditionalChinese(text: string): string {
       .replace(/会/g, '會')
       .replace(/国/g, '國')
       .replace(/学/g, '學')
-      .replace(/生/g, '生') // This one is the same
       .replace(/们/g, '們')
       .replace(/说/g, '說')
       .replace(/来/g, '來')
-      .replace(/去/g, '去') // This one is the same
       .replace(/时/g, '時')
-      .replace(/年/g, '年') // This one is the same
-      .replace(/月/g, '月') // This one is the same
-      .replace(/日/g, '日') // This one is the same
-      .replace(/人/g, '人') // This one is the same
-      .replace(/大/g, '大') // This one is the same
-      .replace(/小/g, '小') // This one is the same
-      .replace(/长/g, '長')
-      .replace(/高/g, '高') // This one is the same
-      .replace(/低/g, '低'); // This one is the same
+      .replace(/长/g, '長');
 
     return converted;
   }
