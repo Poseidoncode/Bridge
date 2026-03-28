@@ -25,6 +25,95 @@ let smartInputStatusTimer: number | null = null;
 let languageDetectorPromise: Promise<LanguageDetectorInstance | null> | null = null;
 let languageDetectorBlocked = false;
 
+const downloadStatusCache = new Map<string, {
+  status: 'available' | 'downloadable' | 'unavailable' | 'downloading';
+  lastChecked: number;
+  progress: number;
+}>();
+
+const DOWNLOAD_CACHE_TTL = 5000;
+
+function getPollInterval(progress: number): number {
+  if (progress < 50) return 10000;
+  if (progress < 90) return 5000;
+  return 2000;
+}
+
+async function getCachedAvailability(
+  sourceLang: string,
+  targetLang: string
+): Promise<'available' | 'downloadable' | 'unavailable'> {
+  const key = `${sourceLang}->${targetLang}`;
+  const cached = downloadStatusCache.get(key);
+
+  if (cached && Date.now() - cached.lastChecked < DOWNLOAD_CACHE_TTL) {
+    return cached.status === 'downloading' ? 'downloadable' : cached.status;
+  }
+
+  const availability = await Translator.availability({
+    sourceLanguage: sourceLang,
+    targetLanguage: targetLang
+  });
+
+  downloadStatusCache.set(key, {
+    status: availability,
+    lastChecked: Date.now(),
+    progress: 0
+  });
+
+  return availability;
+}
+
+function clearDownloadCache(sourceLang: string, targetLang: string): void {
+  const key = `${sourceLang}->${targetLang}`;
+  downloadStatusCache.delete(key);
+}
+
+const settingsCache = {
+  targetReadLang: 'zh-Hant',
+  targetWriteLang: 'en',
+  initialized: false,
+};
+
+const DEBOUNCE_DELAY = 400;
+const MIN_MUTATION_TEXT_LENGTH = 10;
+let mutationCount = 0;
+let translationTriggerCount = 0;
+let mainContentRoot: HTMLElement | null = null;
+let isFallbackToBody = false;
+
+async function initSettingsCache(): Promise<void> {
+  const settings = await chrome.storage.sync.get(['targetReadLang', 'targetWriteLang']);
+  settingsCache.targetReadLang = settings.targetReadLang || 'zh-Hant';
+  settingsCache.targetWriteLang = settings.targetWriteLang || 'en';
+  settingsCache.initialized = true;
+}
+
+function findMainContentRoot(): HTMLElement | null {
+  const selectors = [
+    'main',
+    'article',
+    '[role="main"]',
+    '.content',
+    '#content',
+    '#main',
+    '.main-content',
+    '.post-content',
+    '.article-content',
+  ];
+
+  for (const selector of selectors) {
+    const element = document.querySelector<HTMLElement>(selector);
+    if (element && element.textContent?.trim().length > 100) {
+      isFallbackToBody = false;
+      return element;
+    }
+  }
+
+  isFallbackToBody = true;
+  return document.body;
+}
+
 interface LanguageDetectorInstance {
   detect(text: string): Promise<Array<{ detectedLanguage: string; confidence: number }>>;
 }
@@ -421,15 +510,26 @@ function ensureMutationObserver() {
   if (mutationObserver) {
     return;
   }
+  
+  const targetRoot = findMainContentRoot();
+  if (!targetRoot) {
+    return;
+  }
+  mainContentRoot = targetRoot;
+  
   mutationObserver = new MutationObserver(handleMutations);
-  mutationObserver.observe(document.body, {
+  mutationObserver.observe(targetRoot, {
     childList: true,
     subtree: true,
     characterData: true,
   });
+  
+  console.log(`MutationObserver initialized on ${isFallbackToBody ? 'body (fallback)' : 'main content root'}`);
 }
 
 function handleMutations(records: MutationRecord[]) {
+  mutationCount += records.length;
+  
   if (!autoTranslateEnabled) {
     return;
   }
@@ -437,6 +537,9 @@ function handleMutations(records: MutationRecord[]) {
     mutationDeferred = true;
     return;
   }
+  
+  let shouldTranslate = false;
+  
   for (const record of records) {
     if (record.type === 'childList') {
       for (const node of Array.from(record.addedNodes)) {
@@ -447,25 +550,24 @@ function handleMutations(records: MutationRecord[]) {
           if ((node as HTMLElement).dataset.translationbridgeInjected) {
             continue;
           }
-          scheduleFullTranslation(600, {
-            showIndicator: false,
-            skipPolling: true,
-            targetLang: currentTargetReadLang,
-          });
-          return;
+          if ((node as HTMLElement).classList.contains('translationbridge-inline-translated')) {
+            continue;
+          }
+          shouldTranslate = true;
+          break;
         }
         if (node instanceof Text) {
           const parent = node.parentElement;
           if (parent && (parent.classList.contains('translationbridge-translation-content') || parent.dataset.translationbridgeInjected)) {
             continue;
           }
-          if (node.textContent && node.textContent.trim()) {
-            scheduleFullTranslation(600, {
-              showIndicator: false,
-              skipPolling: true,
-              targetLang: currentTargetReadLang,
-            });
-            return;
+          if (parent && parent.classList.contains('translationbridge-inline-translated')) {
+            continue;
+          }
+          const text = node.textContent?.trim() || '';
+          if (text.length >= MIN_MUTATION_TEXT_LENGTH) {
+            shouldTranslate = true;
+            break;
           }
         }
       }
@@ -474,13 +576,27 @@ function handleMutations(records: MutationRecord[]) {
       if (parent && (parent.classList.contains('translationbridge-translation-content') || parent.dataset.translationbridgeInjected)) {
         continue;
       }
-      scheduleFullTranslation(600, {
-        showIndicator: false,
-        skipPolling: true,
-        targetLang: currentTargetReadLang,
-      });
-      return;
+      if (parent && parent.classList.contains('translationbridge-inline-translated')) {
+        continue;
+      }
+      const text = (record.target as CharacterData).textContent?.trim() || '';
+      if (text.length >= MIN_MUTATION_TEXT_LENGTH) {
+        shouldTranslate = true;
+      }
     }
+    
+    if (shouldTranslate) {
+      break;
+    }
+  }
+  
+  if (shouldTranslate) {
+    translationTriggerCount++;
+    scheduleFullTranslation(DEBOUNCE_DELAY, {
+      showIndicator: false,
+      skipPolling: true,
+      targetLang: currentTargetReadLang,
+    });
   }
 }
 
@@ -496,11 +612,22 @@ function scheduleFullTranslation(delay: number, options: TranslatePageOptions = 
     if (!autoTranslateEnabled) {
       return;
     }
-    translationQueue = translationQueue
-      .then(() => translatePage(options))
-      .catch(error => {
-        console.error('Scheduled translation failed:', error);
-      });
+    
+    const executeTranslation = () => {
+      translationQueue = translationQueue
+        .then(() => translatePage(options))
+        .catch(error => {
+          console.error('Scheduled translation failed:', error);
+        });
+    };
+    
+    if ('requestIdleCallback' in window) {
+      window.requestIdleCallback(() => {
+        executeTranslation();
+      }, { timeout: 2000 });
+    } else {
+      executeTranslation();
+    }
   }, delay);
 }
 
@@ -529,11 +656,15 @@ async function syncTabTranslationState(triggerFull: boolean, delay = 0) {
   }
 }
 
+void initSettingsCache();
 void syncTabTranslationState(false);
 
 // Function to handle page navigation
 async function handlePageNavigation() {
   try {
+    console.log(`Performance stats: mutations=${mutationCount}, translationTriggers=${translationTriggerCount}`);
+    mutationCount = 0;
+    translationTriggerCount = 0;
     resetSmartInputPresentation();
     revertPage();
     await syncTabTranslationState(true, 400);
@@ -557,8 +688,13 @@ document.addEventListener('keydown', async (event) => {
     }
     smartInputSources.set(element, sourceText);
     enableSmartInputDisplay(element, sourceText);
-    const settings = await chrome.storage.sync.get(['targetWriteLang']);
-    const targetLang = settings.targetWriteLang || 'en';
+    let targetLang: string;
+    if (settingsCache.initialized) {
+      targetLang = settingsCache.targetWriteLang;
+    } else {
+      const settings = await chrome.storage.sync.get(['targetWriteLang']);
+      targetLang = settings.targetWriteLang || 'en';
+    }
     let finalText: string | null = null;
     try {
       if (typeof Translator !== 'undefined') {
@@ -687,8 +823,12 @@ chrome.storage.onChanged.addListener(async (changes, namespace) => {
     const readLangChanged = changes.targetReadLang && changes.targetReadLang.newValue !== changes.targetReadLang.oldValue;
     const writeLangChanged = changes.targetWriteLang && changes.targetWriteLang.newValue !== changes.targetWriteLang.oldValue;
 
-    if (changes.targetReadLang && typeof changes.targetReadLang.newValue === 'string') {
+    if (changes.targetReadLang?.newValue) {
+      settingsCache.targetReadLang = changes.targetReadLang.newValue;
       currentTargetReadLang = changes.targetReadLang.newValue;
+    }
+    if (changes.targetWriteLang?.newValue) {
+      settingsCache.targetWriteLang = changes.targetWriteLang.newValue;
     }
 
     if (readLangChanged || writeLangChanged) {
@@ -792,6 +932,8 @@ async function translatePage(options: TranslatePageOptions = {}) {
     let targetLang: string;
     if (options.targetLang) {
       targetLang = options.targetLang;
+    } else if (settingsCache.initialized) {
+      targetLang = settingsCache.targetReadLang;
     } else {
       const settings = await chrome.storage.sync.get(['targetReadLang']);
       targetLang = settings.targetReadLang || 'en';
@@ -1448,25 +1590,23 @@ async function pollForPageTranslationCompletion(targetLang: string) {
 
   console.log(`Page translation polling started for target language: ${targetLang}, source languages: ${Array.from(sourceLanguages)}`);
 
-  const pollInterval = setInterval(async () => {
+  let progress = 0;
+  let pollInterval: number | null = null;
+
+  const runPoll = async () => {
     attempts++;
 
     try {
       let allAvailable = true;
       const availabilityResults: string[] = [];
 
-      // Check availability for all source-target language pairs
       for (const sourceLang of sourceLanguages) {
-        const availability = await Translator.availability({
-          sourceLanguage: sourceLang,
-          targetLanguage: targetLang
-        });
+        const availability = await getCachedAvailability(sourceLang, targetLang);
         availabilityResults.push(`${sourceLang}->${targetLang}: ${availability}`);
 
         if (availability !== 'available') {
           allAvailable = false;
 
-          // If still downloadable, not all downloads are complete
           if (availability === 'downloadable') {
             break;
           }
@@ -1478,39 +1618,50 @@ async function pollForPageTranslationCompletion(targetLang: string) {
       if (allAvailable) {
         console.log(`All translation models are now available - performing page translation`);
 
-        // Clear the polling interval
-        clearInterval(pollInterval);
+        if (pollInterval) clearInterval(pollInterval);
 
-        // Perform actual page translation
+        for (const sourceLang of sourceLanguages) {
+          clearDownloadCache(sourceLang, targetLang);
+        }
+
         await performPageTranslation(targetLang);
 
       } else if (attempts >= maxAttempts) {
         console.log(`Polling timeout for page translation - stopping after ${maxAttempts} attempts`);
-        clearInterval(pollInterval);
+        if (pollInterval) clearInterval(pollInterval);
 
-        // Update loading indicator to show timeout
         const loadingElement = document.getElementById('translationbridge-loading');
         if (loadingElement) {
           loadingElement.textContent = 'Translation timeout, please try again';
           setTimeout(() => loadingElement.remove(), 3000);
         }
+      } else {
+        progress = Math.min(90, progress + 10);
+        const interval = getPollInterval(progress);
+        pollInterval = window.setTimeout(runPoll, interval);
+        return;
       }
     } catch (error) {
       console.error(`Error polling page translation status:`, error);
 
       if (attempts >= maxAttempts) {
-        clearInterval(pollInterval);
+        if (pollInterval) clearInterval(pollInterval);
         console.log(`Page translation polling failed - stopping after ${maxAttempts} attempts`);
 
-        // Update loading indicator to show error
         const loadingElement = document.getElementById('translationbridge-loading');
         if (loadingElement) {
           loadingElement.textContent = 'Translation failed, please try again';
           setTimeout(() => loadingElement.remove(), 3000);
         }
+      } else {
+        progress = Math.min(90, progress + 10);
+        const interval = getPollInterval(progress);
+        pollInterval = window.setTimeout(runPoll, interval);
       }
     }
-  }, 10000); // Check every 10 seconds
+  };
+
+  runPoll();
 }
 
 // Helper function to perform actual page translation
@@ -1645,24 +1796,23 @@ async function performPageTranslation(targetLang: string) {
 // Polling function to check when download is complete and perform translation
 async function pollForTranslationCompletion(sourceLang: string, targetLang: string, originalText: string) {
   let attempts = 0;
-  const maxAttempts = 30; // Poll for up to 5 minutes (30 * 10 seconds)
+  const maxAttempts = 30;
+  let progress = 0;
+  let pollTimer: number | null = null;
 
-  const pollInterval = setInterval(async () => {
+  const runPoll = async () => {
     attempts++;
 
     try {
-      const availability = await Translator.availability({
-        sourceLanguage: sourceLang,
-        targetLanguage: targetLang
-      });
+      const availability = await getCachedAvailability(sourceLang, targetLang);
 
       if (availability === 'available') {
         console.log(`Translation model for ${targetLang} is now available - performing translation`);
 
-        // Clear the polling interval
-        clearInterval(pollInterval);
+        if (pollTimer) clearTimeout(pollTimer);
 
-        // Create translator and perform translation
+        clearDownloadCache(sourceLang, targetLang);
+
         const translator = await Translator.create({
           sourceLanguage: sourceLang,
           targetLanguage: targetLang
@@ -1670,7 +1820,6 @@ async function pollForTranslationCompletion(sourceLang: string, targetLang: stri
 
         const translatedText = await translator.translate(originalText);
 
-        // Post-process translation for Traditional Chinese if needed
         let finalText: string;
         if (targetLang === 'zh-Hant') {
           finalText = ensureTraditionalChinese(translatedText);
@@ -1678,7 +1827,6 @@ async function pollForTranslationCompletion(sourceLang: string, targetLang: stri
           finalText = translatedText;
         }
 
-        // Update the active element with the actual translation
         const targetElement = activeElement && isSmartInputElement(activeElement) ? activeElement : null;
         if (targetElement) {
           smartInputSources.set(targetElement, originalText);
@@ -1689,9 +1837,8 @@ async function pollForTranslationCompletion(sourceLang: string, targetLang: stri
         console.log(`Translation completed for ${targetLang}: ${originalText} -> ${finalText}`);
       } else if (availability === 'unavailable') {
         console.log(`Translation model for ${targetLang} became unavailable`);
-        clearInterval(pollInterval);
+        if (pollTimer) clearTimeout(pollTimer);
 
-        // Update UI to show error
         const targetElement = activeElement && isSmartInputElement(activeElement) ? activeElement : null;
         if (targetElement) {
           smartInputSources.set(targetElement, originalText);
@@ -1700,25 +1847,34 @@ async function pollForTranslationCompletion(sourceLang: string, targetLang: stri
         }
       } else if (attempts >= maxAttempts) {
         console.log(`Polling timeout for ${targetLang} - stopping after ${maxAttempts} attempts`);
-        clearInterval(pollInterval);
+        if (pollTimer) clearTimeout(pollTimer);
 
-        // Update UI to show timeout
         const targetElement = activeElement && isSmartInputElement(activeElement) ? activeElement : null;
         if (targetElement) {
           smartInputSources.set(targetElement, originalText);
           updateSmartInputDisplay(targetElement, originalText);
           setSmartInputElementValue(targetElement, `[Translation timeout for ${targetLang}] ${originalText}`, false);
         }
+      } else {
+        progress = Math.min(90, progress + 10);
+        const interval = getPollInterval(progress);
+        pollTimer = window.setTimeout(runPoll, interval);
       }
     } catch (error) {
       console.error(`Error polling translation status for ${targetLang}:`, error);
 
       if (attempts >= maxAttempts) {
-        clearInterval(pollInterval);
+        if (pollTimer) clearTimeout(pollTimer);
         console.log(`Polling failed for ${targetLang} - stopping after ${maxAttempts} attempts`);
+      } else {
+        progress = Math.min(90, progress + 10);
+        const interval = getPollInterval(progress);
+        pollTimer = window.setTimeout(runPoll, interval);
       }
     }
-  }, 10000); // Check every 10 seconds
+  };
+
+  runPoll();
 }
 
 function isModelDownloadPlaceholder(text: string): boolean {
@@ -1728,9 +1884,13 @@ function isModelDownloadPlaceholder(text: string): boolean {
 // Function to update existing translations when language settings change
 async function updateExistingTranslations() {
   try {
-    // Get new target language from storage
-    const settings = await chrome.storage.sync.get(['targetReadLang']);
-    const newTargetLang = settings.targetReadLang || 'en';
+    let newTargetLang: string;
+    if (settingsCache.initialized) {
+      newTargetLang = settingsCache.targetReadLang;
+    } else {
+      const settings = await chrome.storage.sync.get(['targetReadLang']);
+      newTargetLang = settings.targetReadLang || 'en';
+    }
 
     console.log(`Updating existing translations to language: ${newTargetLang}`);
 
