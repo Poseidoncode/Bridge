@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import LanguageSelector from "./lib/LanguageSelector.svelte";
+  import StatusIndicator from "./lib/StatusIndicator.svelte";
 
   // Using Svelte 5 Runes
   let targetWriteLang = $state("en");
@@ -350,6 +351,11 @@
       </div>
       <div class="card-title">
         <label for="translation-toggle">Real-time Translation</label>
+        <StatusIndicator 
+          state={currentPageTranslated ? 'on' : 'off'} 
+          label={currentPageTranslated ? 'ON' : 'OFF'}
+          size="small"
+        />
       </div>
       <label class="switch">
         <input
