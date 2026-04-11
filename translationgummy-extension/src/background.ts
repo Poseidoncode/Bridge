@@ -1,6 +1,46 @@
 // File: src/background.ts
 console.log("Translationbridge Background Script Loaded.");
 
+async function setupContextMenu(): Promise<void> {
+	try {
+		await chrome.contextMenus.removeAll();
+		
+		await chrome.contextMenus.create({
+			id: 'bridge-translate-selection',
+			title: 'Translate with Bridge',
+			contexts: ['selection']
+		});
+		
+		console.log('Context menu registered successfully');
+	} catch (error) {
+		console.error('Error setting up context menu:', error);
+	}
+}
+
+chrome.runtime.onInstalled.addListener(() => {
+	setupContextMenu();
+});
+
+chrome.runtime.onStartup.addListener(() => {
+	setupContextMenu();
+});
+
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+	if (info.menuItemId === 'bridge-translate-selection' && tab?.id) {
+		const selectedText = info.selectionText;
+		if (selectedText) {
+			try {
+				await chrome.tabs.sendMessage(tab.id, {
+					action: 'translateSelection',
+					text: selectedText
+				});
+			} catch (error) {
+				console.error('Error sending translation message:', error);
+			}
+		}
+	}
+});
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 	if (message?.action === "resetTranslationStateForTab") {
 		const tabId = sender.tab?.id;

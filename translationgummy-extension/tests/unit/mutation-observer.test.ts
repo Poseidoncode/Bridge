@@ -83,7 +83,7 @@ describe('DOM Utilities', () => {
       }
       return target instanceof HTMLInputElement || 
              target instanceof HTMLTextAreaElement || 
-             target.isContentEditable;
+             (target.isContentEditable === true);
     };
     
     const input = document.createElement('input');

@@ -1,5 +1,7 @@
 import { NotificationManager } from './lib/notifications';
 import { DEFAULTS } from './constants';
+import { translationCache, generateCacheKey } from './lib/translationCache';
+import { retryWithBackoff } from './lib/retry';
 ;(window as any).__TRANSLATIONbridge_CONTENT_SCRIPT_LOADED = true;
 console.log("Translationbridge Content Script Loaded.");
 
@@ -22,6 +24,17 @@ let smartInputHintShown = false;
 let smartInputHintTimer: number | null = null;
 let languageDetectorPromise: Promise<LanguageDetectorInstance | null> | null = null;
 let languageDetectorBlocked = false;
+
+// IntersectionObserver state
+let visibilityObserver: IntersectionObserver | null = null;
+
+function cleanupVisibilityObserver() {
+  if (visibilityObserver) {
+    visibilityObserver.disconnect();
+    visibilityObserver = null;
+  }
+}
+
 
 const downloadStatusCache = new Map<string, {
   status: 'available' | 'downloadable' | 'unavailable' | 'downloading';
@@ -391,8 +404,14 @@ async function detectLanguageAccurate(text: string, forceDetector = false): Prom
 document.addEventListener('focusin', (event) => {
   cleanupOrphanSmartInputDebugs();
   const target = event.target;
+  
+  if (activeElement) {
+    activeElement.classList.remove('translationbridge-smart-input-active');
+  }
+  
   if (isSmartInputElement(target)) {
     activeElement = target;
+    target.classList.add('translationbridge-smart-input-active');
     const stored = smartInputSources.get(target);
     const currentText = stored !== undefined ? stored : readSmartInputText(target);
     if (stored === undefined) {
@@ -402,6 +421,13 @@ document.addEventListener('focusin', (event) => {
     return;
   }
   activeElement = null;
+});
+
+document.addEventListener('focusout', (event) => {
+  const target = event.target;
+  if (target instanceof HTMLElement) {
+    target.classList.remove('translationbridge-smart-input-active');
+  }
 });
 
 document.addEventListener('input', (event) => {
@@ -891,6 +917,58 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     });
     sendResponse({ success: true });
     return true;
+  } else if (message.action === "translateSelection") {
+    const textToTranslate = message.text;
+    if (textToTranslate) {
+      translationQueue = translationQueue
+        .then(async () => {
+          const manager = NotificationManager.getInstance();
+          const loadingId = manager.show({
+            message: 'Translating selection...',
+            type: 'info',
+            persistent: true,
+          });
+          
+          let targetLang: string;
+          if (settingsCache.initialized) {
+            targetLang = settingsCache.targetReadLang;
+          } else {
+            const settings = await chrome.storage.sync.get(['targetReadLang']);
+            targetLang = settings.targetReadLang || 'zh-Hant';
+          }
+          
+          const result = await translateText(textToTranslate, targetLang);
+          
+          manager.dismiss(loadingId);
+          
+          if (result && !result.startsWith('[')) {
+            manager.show({
+              message: result,
+              type: 'success',
+              persistent: false,
+              duration: 5000,
+            });
+          } else {
+            manager.show({
+              message: 'Translation failed. Please try again.',
+              type: 'error',
+              persistent: false,
+              duration: 3000,
+            });
+          }
+        })
+        .catch(error => {
+          console.error('Selection translation failed:', error);
+          NotificationManager.getInstance().show({
+            message: 'Translation error',
+            type: 'error',
+            persistent: false,
+            duration: 3000,
+          });
+        });
+    }
+    sendResponse({ success: true });
+    return true;
   }
 });
 
@@ -932,7 +1010,9 @@ async function translatePage(options: TranslatePageOptions = {}) {
       originalText: string;
     };
 
-    const tasks: TranslationTask[] = [];
+        const tasks: TranslationTask[] = [];
+    const visibleTasks: TranslationTask[] = [];
+    const deferredTasks: TranslationTask[] = [];
 
     for (const node of nodes) {
       sanitizeTranslationArtifacts(node);
@@ -942,87 +1022,159 @@ async function translatePage(options: TranslatePageOptions = {}) {
       const inlineTargets = getInlineTranslationTargets(node);
       if (inlineTargets.length > 0) {
         inlineTargets.forEach(target => {
-          if (target.classList.contains('translationbridge-inline-translated')) {
-            return;
-          }
-
+          if (target.classList.contains('translationbridge-inline-translated')) return;
           const inlineText = getInlineOriginalText(target);
-          if (!inlineText) {
-            return;
-          }
-
-          tasks.push({
-            element: target,
-            mode: 'inline',
-            originalText: inlineText
-          });
+          if (!inlineText) return;
+          tasks.push({ element: target, mode: 'inline', originalText: inlineText });
         });
         continue;
       }
 
       if (node.tagName === 'LI') {
-        if (isNavigationContext(node)) {
-          continue;
-        }
-        if (listItemHasBlockContent(node)) {
-          continue;
-        }
+        if (isNavigationContext(node)) continue;
+        if (listItemHasBlockContent(node)) continue;
       }
 
       const textContent = node.textContent?.trim();
       if (!textContent) continue;
       if (textContent.length <= 10) continue;
 
-      tasks.push({
-        element: node,
-        mode: 'block',
-        originalText: textContent
-      });
+      tasks.push({ element: node, mode: 'block', originalText: textContent });
     }
 
-    const translationResults = await Promise.allSettled(
-      tasks.map(task => translateText(task.originalText, targetLang))
-    );
+    // Setup IntersectionObserver for visibility prioritization
+    cleanupVisibilityObserver();
+    
+    // Fast path: if no tasks, just return
+    if (tasks.length === 0) {
+      mutationSuppressed = false;
+      return;
+    }
 
-    let successCount = 0;
-    let downloadPending = false;
-
-    translationResults.forEach((result, index) => {
-      const task = tasks[index];
-      if (!task) {
-        return;
-      }
-
-      if (result.status === 'fulfilled' && result.value) {
-        if (typeof result.value === 'string' && isModelDownloadPlaceholder(result.value)) {
-          downloadPending = true;
-          return;
+    await new Promise<void>((resolve) => {
+      visibilityObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          const taskIndex = tasks.findIndex(t => t.element === entry.target);
+          if (taskIndex !== -1) {
+            const task = tasks[taskIndex];
+            if (entry.isIntersecting) {
+              visibleTasks.push(task);
+            } else {
+              deferredTasks.push(task);
+            }
+          }
+        });
+        
+        // Once we've observed all elements once, we can proceed
+        if (visibleTasks.length + deferredTasks.length === tasks.length) {
+          cleanupVisibilityObserver();
+          resolve();
         }
+      }, { rootMargin: '50% 0px 50% 0px' });
 
-        if (task.mode === 'inline' && result.value.startsWith('[')) {
-          console.warn('Skipping inline translation due to fallback result:', result.value);
-          return;
+      tasks.forEach(task => {
+        visibilityObserver!.observe(task.element);
+      });
+      
+      // Fallback in case observer fails to trigger for some elements
+      setTimeout(() => {
+        if (visibilityObserver) {
+          cleanupVisibilityObserver();
+          // Add any remaining unclassified tasks to deferred
+          const classifiedElements = new Set([...visibleTasks, ...deferredTasks].map(t => t.element));
+          tasks.forEach(task => {
+            if (!classifiedElements.has(task.element)) {
+              deferredTasks.push(task);
+            }
+          });
+          resolve();
         }
-
-        if (task.mode === 'inline') {
-          applyInlineTranslation(task.element, result.value);
-        } else {
-          applyBlockTranslation(task.element, result.value);
-        }
-
-        successCount += 1;
-      } else {
-        console.warn(
-          `Translation failed for task ${index}:`,
-          result.status === 'rejected' ? result.reason : 'No result'
-        );
-      }
+      }, 300);
     });
 
-    const inlineTaskCount = tasks.filter(task => task.mode === 'inline').length;
+    console.log(`Translation tasks: ${visibleTasks.length} visible, ${deferredTasks.length} deferred`);
+
+    const processTasks = async (taskList: TranslationTask[], isVisible: boolean) => {
+      if (taskList.length === 0) return 0;
+      
+      const translationResults = await Promise.allSettled(
+        taskList.map(task => translateText(task.originalText, targetLang))
+      );
+
+      let successCount = 0;
+      let downloadPending = false;
+
+      translationResults.forEach((result, index) => {
+        const task = taskList[index];
+        if (!task) return;
+
+        if (result.status === 'fulfilled' && result.value) {
+          if (typeof result.value === 'string' && isModelDownloadPlaceholder(result.value)) {
+            downloadPending = true;
+            return;
+          }
+
+          if (task.mode === 'inline' && result.value.startsWith('[')) {
+            return;
+          }
+
+          if (task.mode === 'inline') {
+            applyInlineTranslation(task.element, result.value);
+          } else {
+            applyBlockTranslation(task.element, result.value);
+          }
+          successCount += 1;
+        }
+      });
+      
+      return { successCount, downloadPending };
+    };
+
+    // Process visible tasks immediately
+    const visibleResult = await processTasks(visibleTasks, true);
+    let totalSuccessCount = visibleResult ? visibleResult.successCount : 0;
+    let downloadPending = visibleResult ? visibleResult.downloadPending : false;
+
+    // Process deferred tasks using requestIdleCallback
+    if (deferredTasks.length > 0) {
+      if ('requestIdleCallback' in window) {
+        // Chunk deferred tasks to avoid blocking main thread too long
+        const chunkSize = 10;
+        let currentIndex = 0;
+        
+        const processNextChunk = (deadline: IdleDeadline) => {
+          if (!autoTranslateEnabled) return;
+          
+          const chunk = deferredTasks.slice(currentIndex, currentIndex + chunkSize);
+          if (chunk.length === 0) return;
+          
+          // Use standard Promise chain rather than top-level await in callback
+          processTasks(chunk, false).then(result => {
+             // Continue chunks
+             currentIndex += chunkSize;
+             if (currentIndex < deferredTasks.length) {
+                window.requestIdleCallback(processNextChunk, { timeout: 2000 });
+             }
+          });
+        };
+        
+        window.requestIdleCallback(processNextChunk, { timeout: 2000 });
+      } else {
+        // Fallback for browsers without requestIdleCallback
+        setTimeout(() => {
+          if (autoTranslateEnabled) {
+            processTasks(deferredTasks, false);
+          }
+        }, 100);
+      }
+    }
+
+    const inlineTaskCount = visibleTasks.filter(task => task.mode === 'inline').length + 
+                            deferredTasks.filter(task => task.mode === 'inline').length;
     const blockTaskCount = tasks.length - inlineTaskCount;
+    
     console.log(
-      `Translation completed: ${tasks.length} tasks processed (block: ${blockTaskCount}, inline: ${inlineTaskCount}), ${successCount} successful translations`
+      `Translation visible batch completed: ${visibleTasks.length} tasks processed, ${totalSuccessCount} successful translations`
     );
 
     if (showIndicator && loadingId) {
@@ -1317,16 +1469,20 @@ function revertPage() {
 
 async function translateText(text: string, targetLang: string): Promise<string | null> {
   try {
-    // Check if Translator API is supported
     if (typeof Translator === 'undefined') {
       console.warn('Translator API not supported');
       return `[translated:${targetLang}] ${text}`;
     }
 
-    // Detect source language from text content
     const detectedSourceLang = await detectLanguageAccurate(text);
 
-    // Check if translation is available for the language pair
+    const cacheKey = generateCacheKey(detectedSourceLang, targetLang, text);
+    const cachedTranslation = translationCache.get(cacheKey);
+    if (cachedTranslation) {
+      console.log(`Cache hit for ${detectedSourceLang} -> ${targetLang}`);
+      return cachedTranslation;
+    }
+
     const availability = await Translator.availability({
       sourceLanguage: detectedSourceLang,
       targetLanguage: targetLang
@@ -1336,7 +1492,6 @@ async function translateText(text: string, targetLang: string): Promise<string |
       console.log(`Translation model for ${targetLang} needs to be downloaded - starting download...`);
 
       try {
-        // Create translator instance to trigger actual download
         const translator = await Translator.create({
           sourceLanguage: detectedSourceLang,
           targetLanguage: targetLang,
@@ -1345,15 +1500,13 @@ async function translateText(text: string, targetLang: string): Promise<string |
               const progress = Math.round((e.loaded / e.total) * 100);
               console.log(`Downloaded ${progress}% for ${targetLang}`);
 
-              // When download is complete (100%), perform translation
               if (progress >= 100) {
                 console.log(`Download completed for ${targetLang}, starting translation...`);
 
                 try {
-                  // Perform translation with the same translator instance
                   const result = await translator.translate(text);
-
                   console.log(`Translation completed for ${targetLang}: ${text} -> ${result}`);
+                  translationCache.set(cacheKey, result);
                   return result;
                 } catch (translationError) {
                   console.error('Error during translation after download:', translationError);
@@ -1364,21 +1517,17 @@ async function translateText(text: string, targetLang: string): Promise<string |
           },
         });
 
-        // Return message indicating download has started
         return `[Translation model downloading for ${targetLang}, please wait...] ${text}`;
       } catch (downloadError: any) {
         console.error('Error starting model download:', downloadError);
 
-        // Check if this is the "user gesture required" error
         if (downloadError.name === 'NotAllowedError' &&
             downloadError.message.includes('user gesture')) {
           console.log('User gesture required for download, but download may still proceed in background');
 
-          // Wait a bit and check if download actually started despite the error
           await new Promise(resolve => setTimeout(resolve, 2000));
 
           try {
-            // Try to check availability again - if it's now 'downloading', the download started
             const recheckAvailability = await Translator.availability({
               sourceLanguage: detectedSourceLang,
               targetLanguage: targetLang
@@ -1392,11 +1541,9 @@ async function translateText(text: string, targetLang: string): Promise<string |
             console.log('Could not recheck availability:', recheckError);
           }
 
-          // If we can't confirm, still return downloading message since the error might be misleading
           return `[Translation model downloading for ${targetLang}, please wait...] ${text}`;
         }
 
-        // For other types of errors, return failure message
         return `[Download failed for ${targetLang}] ${text}`;
       }
     } else if (availability !== 'available') {
@@ -1404,7 +1551,6 @@ async function translateText(text: string, targetLang: string): Promise<string |
       return `[Translation temporarily unavailable: ${targetLang}] ${text}`;
     }
 
-    // Create translator instance with error handling
     let translator;
     try {
       translator = await Translator.create({
@@ -1416,13 +1562,23 @@ async function translateText(text: string, targetLang: string): Promise<string |
       return `[Failed to create translator: ${targetLang}] ${text}`;
     }
 
-    // Perform translation with timeout
-    const result = await Promise.race([
+    const translatePromise = () => Promise.race([
       translator.translate(text),
-      new Promise<never>((_, reject) =>
+      new Promise<string>((_, reject) =>
         setTimeout(() => reject(new Error('Translation timeout')), 10000)
       )
     ]);
+
+    const result = await retryWithBackoff(translatePromise, {
+      attempts: 3,
+      baseDelay: 100,
+      multiplier: 2,
+      maxDelay: 1000
+    });
+
+    if (result && !result.startsWith('[')) {
+      translationCache.set(cacheKey, result);
+    }
 
     return result;
   } catch (e) {
