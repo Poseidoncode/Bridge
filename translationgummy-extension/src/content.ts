@@ -1,5 +1,5 @@
-// File: src/content.ts
-// Debug marker to help tests detect if content script was injected
+import { NotificationManager } from './lib/notifications';
+import { DEFAULTS } from './constants';
 ;(window as any).__TRANSLATIONbridge_CONTENT_SCRIPT_LOADED = true;
 console.log("Translationbridge Content Script Loaded.");
 
@@ -20,8 +20,6 @@ let smartInputIdCounter = 0;
 let smartInputDisplayEnabled = false;
 let smartInputHintShown = false;
 let smartInputHintTimer: number | null = null;
-let smartInputStatusElement: HTMLElement | null = null;
-let smartInputStatusTimer: number | null = null;
 let languageDetectorPromise: Promise<LanguageDetectorInstance | null> | null = null;
 let languageDetectorBlocked = false;
 
@@ -279,55 +277,17 @@ function showSmartInputHint(): void {
   }, 3200);
 }
 
-function ensureSmartInputStatusElement(): HTMLElement {
-  if (!smartInputStatusElement || !smartInputStatusElement.isConnected) {
-    smartInputStatusElement = document.createElement('div');
-    smartInputStatusElement.id = 'translationbridge-smart-input-status';
-    smartInputStatusElement.dataset.translationbridgeInjected = 'smart-input-status';
-    smartInputStatusElement.style.cssText = 'position:fixed;bottom:24px;right:24px;max-width:320px;background:#1d4ed8;color:#f8fafc;padding:12px 18px;border-radius:10px;font-family:Arial,sans-serif;font-size:13px;line-height:1.5;box-shadow:0 18px 30px rgba(15,23,42,0.35);z-index:10002;pointer-events:none;border:1px solid rgba(96,165,250,0.4);transition:opacity 0.2s ease;opacity:1;';
-    document.body.appendChild(smartInputStatusElement);
-  }
-  return smartInputStatusElement;
-}
-
-function showSmartInputStatus(message: string, tone: 'info' | 'success' | 'error' = 'info', persistent = false, duration = 3200): void {
-  const element = ensureSmartInputStatusElement();
-  element.textContent = message;
-  if (tone === 'success') {
-    element.style.background = '#15803d';
-    element.style.borderColor = 'rgba(74,222,128,0.45)';
-  } else if (tone === 'error') {
-    element.style.background = '#b91c1c';
-    element.style.borderColor = 'rgba(248,113,113,0.45)';
-  } else {
-    element.style.background = '#1d4ed8';
-    element.style.borderColor = 'rgba(96,165,250,0.4)';
-  }
-  element.style.opacity = '1';
-  if (smartInputStatusTimer !== null) {
-    clearTimeout(smartInputStatusTimer);
-    smartInputStatusTimer = null;
-  }
-  if (!persistent) {
-    smartInputStatusTimer = window.setTimeout(() => {
-      hideSmartInputStatus();
-    }, duration);
-  }
+function showSmartInputStatus(message: string, tone: 'info' | 'success' | 'error' = 'info', persistent = false, duration = DEFAULTS.NOTIFICATION_DURATION): void {
+  const manager = NotificationManager.getInstance();
+  manager.show({
+    message,
+    type: tone,
+    persistent,
+    duration,
+  });
 }
 
 function hideSmartInputStatus(): void {
-  if (smartInputStatusTimer !== null) {
-    clearTimeout(smartInputStatusTimer);
-    smartInputStatusTimer = null;
-  }
-  if (smartInputStatusElement) {
-    const element = smartInputStatusElement;
-    smartInputStatusElement = null;
-    element.style.opacity = '0';
-    window.setTimeout(() => {
-      element.remove();
-    }, 200);
-  }
 }
 
 function normalizeLanguageCode(code: string): string {
@@ -921,6 +881,16 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
       }
     });
     return true; // Keep message channel open for async response
+  } else if (message.action === "showNotification") {
+    const manager = NotificationManager.getInstance();
+    manager.show({
+      message: message.message,
+      type: message.type || 'info',
+      persistent: message.persistent || false,
+      duration: message.duration || DEFAULTS.NOTIFICATION_DURATION,
+    });
+    sendResponse({ success: true });
+    return true;
   }
 });
 
@@ -940,28 +910,14 @@ async function translatePage(options: TranslatePageOptions = {}) {
     }
     currentTargetReadLang = targetLang;
 
-    let loadingDiv: HTMLElement | null = null;
+    let loadingId: string | null = null;
     if (showIndicator) {
-      loadingDiv = document.getElementById('translationbridge-loading');
-      if (loadingDiv) {
-        loadingDiv.textContent = 'Translating...';
-      } else {
-        loadingDiv = document.createElement('div');
-        loadingDiv.id = 'translationbridge-loading';
-        loadingDiv.textContent = 'Translating...';
-        loadingDiv.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: #007bff;
-      color: white;
-      padding: 10px 20px;
-      border-radius: 5px;
-      z-index: 10000;
-      font-family: Arial, sans-serif;
-    `;
-        document.body.appendChild(loadingDiv);
-      }
+      const manager = NotificationManager.getInstance();
+      loadingId = manager.show({
+        message: 'Translating...',
+        type: 'info',
+        persistent: true,
+      });
     }
 
     if (showIndicator && !skipPolling) {
@@ -1069,14 +1025,17 @@ async function translatePage(options: TranslatePageOptions = {}) {
       `Translation completed: ${tasks.length} tasks processed (block: ${blockTaskCount}, inline: ${inlineTaskCount}), ${successCount} successful translations`
     );
 
-    if (showIndicator) {
-      const loadingElement = document.getElementById('translationbridge-loading');
-      if (loadingElement) {
-        if (downloadPending) {
-          loadingElement.textContent = 'Downloading translation model...';
-        } else {
-          loadingElement.remove();
-        }
+    if (showIndicator && loadingId) {
+      const manager = NotificationManager.getInstance();
+      if (downloadPending) {
+        manager.show({
+          id: loadingId,
+          message: 'Downloading translation model...',
+          type: 'info',
+          persistent: true,
+        });
+      } else {
+        manager.dismiss(loadingId);
       }
     }
 
@@ -1084,29 +1043,16 @@ async function translatePage(options: TranslatePageOptions = {}) {
     console.error('Error in translatePage:', error);
 
     if (options.showIndicator !== false) {
-      const loadingElement = document.getElementById('translationbridge-loading');
-      if (loadingElement) {
-        loadingElement.remove();
+      if (loadingId) {
+        NotificationManager.getInstance().dismiss(loadingId);
       }
 
-      const errorDiv = document.createElement('div');
-      errorDiv.textContent = 'Translation failed, please try again later';
-      errorDiv.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: #dc3545;
-      color: white;
-      padding: 10px 20px;
-      border-radius: 5px;
-      z-index: 10000;
-      font-family: Arial, sans-serif;
-    `;
-      document.body.appendChild(errorDiv);
-
-      setTimeout(() => {
-        errorDiv.remove();
-      }, 3000);
+      NotificationManager.getInstance().show({
+        message: 'Translation failed, please try again later',
+        type: 'error',
+        persistent: false,
+        duration: 3000,
+      });
     }
   } finally {
     mutationSuppressed = false;
