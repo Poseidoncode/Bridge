@@ -2,6 +2,8 @@ import { NotificationManager } from './lib/notifications';
 import { DEFAULTS } from './constants';
 import { translationCache, generateCacheKey } from './lib/translationCache';
 import { retryWithBackoff } from './lib/retry';
+import FloatingButton from './lib/FloatingButton.svelte';
+import { mount, unmount } from 'svelte';
 ;(window as any).__TRANSLATIONbridge_CONTENT_SCRIPT_LOADED = true;
 console.log("Translationbridge Content Script Loaded.");
 
@@ -24,6 +26,10 @@ let smartInputHintShown = false;
 let smartInputHintTimer: number | null = null;
 let languageDetectorPromise: Promise<LanguageDetectorInstance | null> | null = null;
 let languageDetectorBlocked = false;
+
+// Floating button state
+let floatingButtonInstance: ReturnType<typeof mount> | null = null;
+let isTranslationEnabled = false;
 
 // IntersectionObserver state
 let visibilityObserver: IntersectionObserver | null = null;
@@ -448,6 +454,17 @@ document.addEventListener('input', (event) => {
 document.addEventListener('DOMContentLoaded', () => {
   console.log('Page DOM loaded, resetting translation state...');
   handlePageNavigation();
+  // Initialize floating button after DOM is ready
+  if (document.body) {
+    initFloatingButton();
+  } else {
+    const waitForBody = setInterval(() => {
+      if (document.body) {
+        clearInterval(waitForBody);
+        initFloatingButton();
+      }
+    }, 100);
+  }
 });
 
 // Listen for history changes (back/forward navigation)
@@ -645,6 +662,59 @@ async function syncTabTranslationState(triggerFull: boolean, delay = 0) {
 void initSettingsCache();
 void syncTabTranslationState(false);
 
+// Floating button functions
+function initFloatingButton() {
+  // Remove existing floating button if any
+  const existing = document.querySelector('.translationbridge-floating-button');
+  if (existing) {
+    existing.remove();
+  }
+
+  // Create container for the floating button
+  const container = document.createElement('div');
+  container.id = 'translationbridge-floating-container';
+  document.body.appendChild(container);
+
+  // Mount the Svelte component
+  floatingButtonInstance = mount(FloatingButton, {
+    target: container,
+    props: {
+      onClick: () => {
+        console.log('Floating button clicked');
+      },
+      onToggle: async () => {
+        isTranslationEnabled = !isTranslationEnabled;
+        if (isTranslationEnabled) {
+          await translatePage();
+        } else {
+          revertPage();
+        }
+      },
+      isTranslationEnabled: isTranslationEnabled
+    }
+  });
+
+  console.log('Floating button initialized');
+}
+
+function destroyFloatingButton() {
+  if (floatingButtonInstance) {
+    unmount(floatingButtonInstance);
+    floatingButtonInstance = null;
+  }
+  const container = document.getElementById('translationbridge-floating-container');
+  if (container) {
+    container.remove();
+  }
+}
+
+function updateFloatingButtonState(enabled: boolean) {
+  isTranslationEnabled = enabled;
+  if (floatingButtonInstance) {
+    floatingButtonInstance.$set({ isTranslationEnabled: enabled });
+  }
+}
+
 // Function to handle page navigation
 async function handlePageNavigation() {
   try {
@@ -654,6 +724,10 @@ async function handlePageNavigation() {
     resetSmartInputPresentation();
     revertPage();
     await syncTabTranslationState(true, 400);
+    // Re-initialize floating button after page navigation
+    if (document.body) {
+      initFloatingButton();
+    }
   } catch (error) {
     console.error('Error handling page navigation:', error);
   }
@@ -832,6 +906,9 @@ chrome.storage.onChanged.addListener(async (changes, namespace) => {
         setTimeout(async () => {
           await translatePage();
         }, 100);
+      } else {
+        // Page not translated, just update floating button to off state
+        updateFloatingButtonState(false);
       }
     }
   } else if (namespace === 'local') {
@@ -1208,6 +1285,8 @@ async function translatePage(options: TranslatePageOptions = {}) {
     }
   } finally {
     mutationSuppressed = false;
+    // Update floating button state
+    updateFloatingButtonState(true);
     if (mutationDeferred) {
       mutationDeferred = false;
       if (autoTranslateEnabled) {
@@ -1400,6 +1479,9 @@ function sanitizeTranslationArtifacts(element: HTMLElement): HTMLElement | null 
 
 function revertPage() {
   try {
+    // Update floating button state
+    updateFloatingButtonState(false);
+    
     // Find all translated elements and restore their original text
     const translatedElements = document.querySelectorAll<HTMLElement>('.translationbridge-translated');
     translatedElements.forEach(element => {

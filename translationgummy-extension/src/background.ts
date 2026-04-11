@@ -96,6 +96,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 		})();
 
 		return true;
+	} else if (message?.action === "openPopup") {
+		// Open the extension popup
+		chrome.action.openPopup();
+		sendResponse({ success: true });
+		return false;
 	}
 	return undefined;
 });
