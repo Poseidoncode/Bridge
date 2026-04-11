@@ -74,6 +74,9 @@ describe('LanguageSelector', () => {
     // Open with Enter
     await fireEvent.keyDown(trigger, { key: 'Enter' });
     
+    // Wait for the timeout to trigger focus
+    await new Promise(resolve => setTimeout(resolve, 50));
+    
     // Input should be focused
     const searchInput = screen.getByPlaceholderText('Search languages...');
     expect(searchInput).toHaveFocus();

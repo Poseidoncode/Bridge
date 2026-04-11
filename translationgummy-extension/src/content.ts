@@ -896,6 +896,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 
 async function translatePage(options: TranslatePageOptions = {}) {
   mutationSuppressed = true;
+  let loadingId: string | null = null;
   try {
     const showIndicator = options.showIndicator !== false;
     const skipPolling = options.skipPolling === true;
@@ -910,7 +911,6 @@ async function translatePage(options: TranslatePageOptions = {}) {
     }
     currentTargetReadLang = targetLang;
 
-    let loadingId: string | null = null;
     if (showIndicator) {
       const manager = NotificationManager.getInstance();
       loadingId = manager.show({

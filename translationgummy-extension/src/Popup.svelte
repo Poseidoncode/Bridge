@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import LanguageSelector from "./lib/LanguageSelector.svelte";
 
   // Using Svelte 5 Runes
   let targetWriteLang = $state("en");
@@ -370,34 +371,12 @@
     </div>
 
     <div class="language-selector">
-      <div class="selector-label">
-        <span class="label-icon">📖</span>
-        <span>Reading Language</span>
-      </div>
-      <select
-        id="read-lang"
+      <LanguageSelector
         bind:value={targetReadLang}
+        label="Reading Language"
+        labelIcon="📖"
         onchange={handleLanguageChange}
-        class="modern-select"
-      >
-        <option value="en">🇬🇧 English</option>
-        <option value="zh-Hant">🇹🇼 繁體中文</option>
-        <option value="zh-CN">🇨🇳 简体中文</option>
-        <option value="ja">🇯🇵 日本語</option>
-        <option value="ko">🇰🇷 한국어</option>
-        <option value="fr">🇫🇷 Français</option>
-        <option value="de">🇩🇪 Deutsch</option>
-        <option value="es">🇪🇸 Español</option>
-        <option value="it">🇮🇹 Italiano</option>
-        <option value="pt">🇵🇹 Português</option>
-        <option value="ru">🇷🇺 Русский</option>
-        <option value="ar">🇸🇦 العربية</option>
-        <option value="hi">🇮🇳 हिन्दी</option>
-        <option value="th">🇹🇭 ไทย</option>
-        <option value="vi">🇻🇳 Tiếng Việt</option>
-        <option value="id">🇮🇩 Bahasa Indonesia</option>
-        <option value="ms">🇲🇾 Bahasa Melayu</option>
-      </select>
+      />
     </div>
   </div>
 
@@ -414,34 +393,12 @@
     </div>
 
     <div class="language-selector">
-      <div class="selector-label">
-        <span class="label-icon">🖌️</span>
-        <span style="transform: translateY(0.4px);">Output Language</span>
-      </div>
-      <select
-        id="write-lang"
+      <LanguageSelector
         bind:value={targetWriteLang}
+        label="Output Language"
+        labelIcon="🖌️"
         onchange={handleLanguageChange}
-        class="modern-select"
-      >
-        <option value="en">🇬🇧 English</option>
-        <option value="zh-Hant">🇹🇼 繁體中文</option>
-        <option value="zh-CN">🇨🇳 简体中文</option>
-        <option value="ja">🇯🇵 日本語</option>
-        <option value="ko">🇰🇷 한국어</option>
-        <option value="fr">🇫🇷 Français</option>
-        <option value="de">🇩🇪 Deutsch</option>
-        <option value="es">🇪🇸 Español</option>
-        <option value="it">🇮🇹 Italiano</option>
-        <option value="pt">🇵🇹 Português</option>
-        <option value="ru">🇷🇺 Русский</option>
-        <option value="ar">🇸🇦 العربية</option>
-        <option value="hi">🇮🇳 हिन्दी</option>
-        <option value="th">🇹🇭 ไทย</option>
-        <option value="vi">🇻🇳 Tiếng Việt</option>
-        <option value="id">🇮🇩 Bahasa Indonesia</option>
-        <option value="ms">🇲🇾 Bahasa Melayu</option>
-      </select>
+      />
     </div>
   </div>
 </main>
@@ -690,65 +647,9 @@
     margin-top: 12px;
   }
 
-  .selector-label {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    font-size: 12px;
-    font-weight: 600;
-    margin-bottom: 10px;
-    color: #cbd5e1;
-    letter-spacing: 0.3px;
-  }
 
-  .label-icon {
-    font-size: 15px;
-  }
 
-  .modern-select {
-    width: 100%;
-    padding: 11px 16px;
-    background-color: rgba(15, 23, 42, 0.6);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23f1f5f9' d='M2 4l4 4 4-4z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 10px center;
-    border: 1px solid rgba(148, 163, 184, 0.2);
-    border-radius: 10px;
-    color: #f1f5f9;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition:
-      background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-      border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-      box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    backdrop-filter: blur(12px);
-    letter-spacing: 0.2px;
-    padding-right: 32px;
-    appearance: none;
-  }
 
-  .modern-select:hover {
-    background-color: rgba(15, 23, 42, 0.7);
-    border-color: rgba(99, 102, 241, 0.4);
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15);
-  }
-
-  .modern-select:focus {
-    outline: none;
-    background-color: rgba(15, 23, 42, 0.8);
-    border-color: rgba(99, 102, 241, 0.6);
-    box-shadow:
-      0 0 0 3px rgba(99, 102, 241, 0.15),
-      0 2px 12px rgba(99, 102, 241, 0.2);
-  }
-
-  .modern-select option {
-    background: #1e293b;
-    color: #f1f5f9;
-    padding: 12px;
-    font-weight: 500;
-  }
 
   .switch {
     position: relative;
