@@ -2,14 +2,19 @@ import { defineConfig } from 'vitest/config';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 
 export default defineConfig({
-  plugins: [svelte()],
+  plugins: [svelte({ compilerOptions: { dev: true } })],
   test: {
-    environment: 'happy-dom',
+    environment: 'jsdom',
+    globals: true,
     setupFiles: ['tests/setup.ts'],
     include: ['tests/**/*.test.ts'],
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+    environmentOptions: {
+      jsdom: {
+        resources: 'usable',
+      },
     },
   },
+  resolve: {
+    conditions: ['browser'],
+  }
 });
